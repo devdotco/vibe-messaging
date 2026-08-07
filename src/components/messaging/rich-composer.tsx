@@ -145,14 +145,16 @@ export function RichComposer({
     editorRef.current?.focus();
     const sel = window.getSelection();
     if (sel && sel.rangeCount) {
-      const range = sel.getRangeAt(0);
-      // Find and replace @query
-      const text = getTextBeforeCursor();
-      const atIdx = text.lastIndexOf('@');
+      const textBefore = getTextBeforeCursor();
+      const atIdx = textBefore.lastIndexOf('@');
       if (atIdx >= 0) {
-        // Walk back in the DOM to replace — simplest: just use execCommand
-        execCmd('insertText', `@${name} `);
+        const charsToDelete = textBefore.length - atIdx;
+        for (let i = 0; i < charsToDelete; i++) {
+          document.execCommand('delete', false);
+        }
       }
+      // Insert as bold so it shows highlighted in editor and serializes to **@Name**
+      document.execCommand('insertHTML', false, `<strong>@${name}</strong>&nbsp;`);
     }
     setShowMentions(false);
   }

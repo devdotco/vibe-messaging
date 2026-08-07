@@ -166,7 +166,9 @@ export function MessageItem({ message, user, currentUserId, channelId, onReact, 
             dangerouslySetInnerHTML={{ __html: message.contentHtml }}
           />
         ) : (
-          <p className="text-sm text-[var(--text-primary)] whitespace-pre-wrap break-words">{content}</p>
+          <div className="text-sm text-[var(--text-primary)] prose prose-sm max-w-none [&_p]:my-0.5 [&_p]:leading-relaxed [&_strong]:font-semibold [&_code]:bg-[var(--panel-hover)] [&_code]:px-1 [&_code]:rounded [&_a]:text-[var(--accent)] whitespace-pre-wrap break-words">
+            <ReactMarkdown>{content}</ReactMarkdown>
+          </div>
         )}
 
         {/* AI metadata */}
