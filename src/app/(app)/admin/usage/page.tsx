@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/session';
 import { db } from '@/lib/db';
 import { claudeUsageLog } from '@/lib/db/schema/messaging';
-import { eq, gte, desc, sum, count, sql } from 'drizzle-orm';
+import { eq, gte, and, desc, sum, count, sql } from 'drizzle-orm';
 import { formatCost } from '@/lib/utils';
 
 export default async function UsageDashboard() {
@@ -13,15 +13,16 @@ export default async function UsageDashboard() {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
+  // Scoped to the current org
   const [todayStats] = await db
     .select({ tokens: sum(sql`${claudeUsageLog.inputTokens} + ${claudeUsageLog.outputTokens}`), cost: sum(claudeUsageLog.costUsd), calls: count() })
     .from(claudeUsageLog)
-    .where(gte(claudeUsageLog.createdAt, today));
+    .where(and(eq(claudeUsageLog.orgId, user.orgId), gte(claudeUsageLog.createdAt, today)));
 
   const [monthStats] = await db
     .select({ tokens: sum(sql`${claudeUsageLog.inputTokens} + ${claudeUsageLog.outputTokens}`), cost: sum(claudeUsageLog.costUsd), calls: count() })
     .from(claudeUsageLog)
-    .where(gte(claudeUsageLog.createdAt, monthStart));
+    .where(and(eq(claudeUsageLog.orgId, user.orgId), gte(claudeUsageLog.createdAt, monthStart)));
 
   const recentLogs = await db.select().from(claudeUsageLog).where(eq(claudeUsageLog.orgId, user.orgId)).orderBy(desc(claudeUsageLog.createdAt)).limit(50);
 

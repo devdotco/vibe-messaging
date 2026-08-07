@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const PUBLIC = ['/sign-in', '/api/webhooks', '/api/health', '/api/auth/magic'];
+const PUBLIC = ['/sign-in', '/api/webhooks', '/api/health', '/api/auth/magic', '/api/messaging/webhooks'];
 
 export function proxy(req: NextRequest) {
   const isPublic = PUBLIC.some(p => req.nextUrl.pathname.startsWith(p));

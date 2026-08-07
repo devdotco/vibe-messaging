@@ -18,14 +18,34 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cha
   return NextResponse.json(membership.channel);
 }
 
+async function getChannelMemberRole(channelId: string, userId: string, userOrgRole: string): Promise<boolean> {
+  if (userOrgRole === 'PLATFORM_ADMIN' || userOrgRole === 'ENTITY_ADMIN') return true;
+  const [m] = await db
+    .select()
+    .from(channelMembers)
+    .where(and(eq(channelMembers.channelId, channelId), eq(channelMembers.userId, userId)));
+  return m?.role === 'admin' || m?.role === 'owner';
+}
+
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ channelId: string }> }) {
   const user = await requireUser();
   const { channelId } = await params;
+
+  const isAdmin = await getChannelMemberRole(channelId, user.id, user.role);
+  if (!isAdmin) return NextResponse.json({ error: 'Forbidden — admin role required' }, { status: 403 });
+
   const body = await req.json();
 
   const [updated] = await db
     .update(channels)
-    .set({ name: body.name, description: body.description, claudeEnabled: body.claudeEnabled, updatedAt: new Date() })
+    .set({
+      name: body.name,
+      description: body.description,
+      claudeEnabled: body.claudeEnabled,
+      type: body.type,
+      isArchived: body.isArchived,
+      updatedAt: new Date(),
+    })
     .where(and(eq(channels.id, channelId), eq(channels.orgId, user.orgId)))
     .returning();
 
@@ -35,6 +55,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ch
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ channelId: string }> }) {
   const user = await requireUser();
   const { channelId } = await params;
+
+  const isAdmin = await getChannelMemberRole(channelId, user.id, user.role);
+  if (!isAdmin) return NextResponse.json({ error: 'Forbidden — admin role required' }, { status: 403 });
 
   await db.update(channels)
     .set({ isArchived: true, updatedAt: new Date() })

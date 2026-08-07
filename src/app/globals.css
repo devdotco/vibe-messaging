@@ -1,44 +1,49 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #f5f6f8;
+  --bg: #f8f9fa;
   --bg-elevated: #ffffff;
   --panel: #ffffff;
   --panel-hover: #f1f3f6;
-  --sidebar: #ffffff;
-  --sidebar-active: color-mix(in srgb, #2f5cff 10%, transparent);
-  --border: #e5e8ec;
-  --border-strong: #cdd2da;
-  --text-primary: #0b0f19;
-  --text-secondary: #3f4757;
-  --text-muted: #6c7484;
-  --accent: #2f5cff;
-  --accent-hover: #2449d0;
-  --accent-subtle: color-mix(in srgb, #2f5cff 12%, transparent);
+  /* Sidebar is always dark — same token in both themes */
+  --sidebar: #1e1f2e;
+  --sidebar-text: #d1d2d3;
+  --sidebar-text-muted: #9b9da3;
+  --sidebar-active: rgba(255,255,255,0.12);
+  --sidebar-hover: rgba(255,255,255,0.07);
+  --sidebar-border: rgba(255,255,255,0.08);
+  --border: rgba(0,0,0,0.08);
+  --border-strong: rgba(0,0,0,0.15);
+  --text-primary: #1d1c1d;
+  --text-secondary: #616061;
+  --text-muted: #868686;
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-subtle: color-mix(in srgb, #4f46e5 12%, transparent);
   --positive: #0f7a52;
   --teal: #0d8f80;
   --warning: #a6620a;
   --negative: #bf2434;
   --ai: #6d4be0;
   --ai-subtle: color-mix(in srgb, #6d4be0 12%, transparent);
+  --online: #2eb886;
+  --away: #ecb22e;
   font-feature-settings: "tnum";
 }
 
 [data-theme="dark"] {
-  --bg: #0e1117;
-  --bg-elevated: #161b24;
-  --panel: #161b24;
-  --panel-hover: #1e2430;
-  --sidebar: #161b24;
-  --sidebar-active: color-mix(in srgb, #2f5cff 15%, transparent);
-  --border: #1e2430;
-  --border-strong: #2a3140;
-  --text-primary: #e8eaf0;
-  --text-secondary: #9aa3b2;
-  --text-muted: #5c6475;
-  --accent: #4f78ff;
-  --accent-hover: #6b8fff;
-  --accent-subtle: color-mix(in srgb, #4f78ff 15%, transparent);
+  --bg: #1a1d21;
+  --bg-elevated: #222529;
+  --panel: #222529;
+  --panel-hover: #2b2d31;
+  --border: rgba(255,255,255,0.08);
+  --border-strong: rgba(255,255,255,0.14);
+  --text-primary: #d1d2d3;
+  --text-secondary: #9e9ea6;
+  --text-muted: #6b6c72;
+  --accent: #4f46e5;
+  --accent-hover: #6d64ff;
+  --accent-subtle: color-mix(in srgb, #4f46e5 18%, transparent);
   --positive: #19a86e;
   --teal: #18bfab;
   --warning: #d4861c;
