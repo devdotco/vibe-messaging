@@ -16,6 +16,12 @@ ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned_by uuid;
 PIN_SQL
 echo "[startup] Pin columns done."
 
+echo "[startup] Adding email source column if missing..."
+psql "$DATABASE_URL" <<'SOURCE_SQL'
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'app';
+SOURCE_SQL
+echo "[startup] Email source column done."
+
 echo "[startup] Deduplicating channels..."
 psql "$DATABASE_URL" <<'DEDUP'
 -- Keep only the earliest channel per (org_id, name), delete the rest

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { dmConversations, dmMessages } from '@/lib/db/schema/messaging';
+import { dmConversations, dmMessages, users } from '@/lib/db/schema/messaging';
 import { requireUser } from '@/lib/auth/session';
 import { pusherServer } from '@/lib/pusher/server';
 import { parseMentions } from '@/lib/claude/mention-parser';
 import { runClaudePipeline } from '@/lib/claude/pipeline';
+import { sendMentionEmail } from '@/lib/email/notifications';
 import { eq, and, isNull, asc, sql } from 'drizzle-orm';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ conversationId: string }> }) {
@@ -33,7 +34,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ con
 
   if (!convo) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const parsed = parseMentions(body.content, {});
+  // Build userMap for @mention resolution
+  const orgUsers = await db.select().from(users).where(eq(users.orgId, user.orgId));
+  const userMap = Object.fromEntries(orgUsers.map((u) => [u.name.toLowerCase().replace(/\s+/g, ''), u.id]));
+
+  const parsed = parseMentions(body.content, userMap);
 
   const [message] = await db.insert(dmMessages).values({
     conversationId,
@@ -44,6 +49,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ con
   }).returning();
 
   await pusherServer.trigger(`org-${user.orgId}-dm-${conversationId}`, 'dm.new', { message });
+
+  // Email notifications for @mentions in DMs (fire and forget)
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://chat.vb.co';
+  for (const mentionedId of parsed.mentionedUserIds) {
+    if (mentionedId === user.id) continue;
+    const mentionedUser = orgUsers.find((u) => u.id === mentionedId);
+    if (mentionedUser?.email) {
+      sendMentionEmail({
+        channelId: conversationId,
+        channelName: 'direct message',
+        messageText: body.content,
+        senderName: user.name,
+        recipientEmail: mentionedUser.email,
+        recipientName: mentionedUser.name,
+        channelUrl: `${appUrl}/dms/${conversationId}`,
+      }).catch(() => {});
+    }
+  }
 
   if (parsed.hasClaude) {
     runClaudePipeline({

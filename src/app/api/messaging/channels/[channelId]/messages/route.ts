@@ -7,6 +7,7 @@ import { requireUser } from '@/lib/auth/session';
 import { pusherServer } from '@/lib/pusher/server';
 import { parseMentions } from '@/lib/claude/mention-parser';
 import { runClaudePipeline } from '@/lib/claude/pipeline';
+import { sendMentionEmail } from '@/lib/email/notifications';
 import { eq, and, isNull, lt, desc, sql, inArray } from 'drizzle-orm';
 import { micromark } from 'micromark';
 
@@ -154,7 +155,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cha
   const messageWithReactions: MessageWithReactions = { ...message, reactions: [] };
   await pusherServer.trigger(`org-${user.orgId}-channel-${channelId}`, 'message.new', { message: messageWithReactions });
 
-  // 9. Create @mention notifications
+  // 9. Create @mention notifications + email
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://chat.vb.co';
   for (const mentionedId of parsed.mentionedUserIds) {
     await db.insert(notifications).values({
       userId: mentionedId,
@@ -169,6 +171,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cha
       'notification.new',
       { type: 'mention', channelId, messageId: message.id },
     );
+    // Email notification (fire and forget — skip self-mentions)
+    if (mentionedId !== user.id) {
+      const mentionedUser = orgUsers.find((u) => u.id === mentionedId);
+      if (mentionedUser?.email) {
+        sendMentionEmail({
+          channelId,
+          channelName: channel.name,
+          messageText: body.content,
+          senderName: user.name,
+          recipientEmail: mentionedUser.email,
+          recipientName: mentionedUser.name,
+          channelUrl: `${appUrl}/channels/${channelId}`,
+        }).catch(() => {});
+      }
+    }
   }
 
   // 10. Fire Claude pipeline without awaiting (non-blocking)

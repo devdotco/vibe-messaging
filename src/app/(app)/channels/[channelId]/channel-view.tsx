@@ -113,7 +113,7 @@ export function ChannelView({ channel: initialChannel, initialMessages, usersMap
           parentMessageId: null, threadReplyCount: 0, threadLastReplyAt: null,
           mentions: null, hasClaudeMention: false,
           isPinned: false, pinnedAt: null, pinnedBy: null,
-          editedAt: null, deletedAt: null, metadata: null,
+          editedAt: null, deletedAt: null, metadata: null, source: 'app',
         } as MessageWithReactions];
       });
     });

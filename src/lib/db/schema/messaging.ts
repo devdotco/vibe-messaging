@@ -91,6 +91,7 @@ export const messages = pgTable('messages', {
   editedAt: timestamp('edited_at', { withTimezone: true }),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
   metadata: jsonb('metadata'),
+  source: text('source').default('app').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 }, (t) => [
   index('messages_channel_created_idx').on(t.channelId, t.createdAt),
