@@ -47,7 +47,9 @@ export async function GET(req: NextRequest) {
     expiresAt,
   });
 
-  const res = NextResponse.redirect(new URL('/', req.url));
+  const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'chat.vb.co';
+  const proto = req.headers.get('x-forwarded-proto') ?? 'https';
+  const res = NextResponse.redirect(new URL('/', `${proto}://${host}`));
   res.cookies.set('__vibe_session', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
