@@ -23,6 +23,9 @@ export function formatTime(date: Date | string): string {
 }
 
 export function formatCost(usd: number): string {
-  if (usd < 0.01) return `$${(usd * 1000).toFixed(2)}m`;
-  return `$${usd.toFixed(4)}`;
+  if (usd === 0) return '$0.00';
+  if (usd < 0.0001) return `$${usd.toFixed(6)}`;
+  if (usd < 0.01) return `$${usd.toFixed(4)}`;
+  if (usd < 1) return `$${usd.toFixed(3)}`;
+  return `$${usd.toFixed(2)}`;
 }
