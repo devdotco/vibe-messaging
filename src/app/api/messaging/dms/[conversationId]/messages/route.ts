@@ -5,7 +5,7 @@ import { requireUser } from '@/lib/auth/session';
 import { pusherServer } from '@/lib/pusher/server';
 import { parseMentions } from '@/lib/claude/mention-parser';
 import { runClaudePipeline } from '@/lib/claude/pipeline';
-import { sendMentionEmail } from '@/lib/email/notifications';
+import { sendMentionEmail, sendDmEmail } from '@/lib/email/notifications';
 import { eq, and, isNull, asc, sql } from 'drizzle-orm';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ conversationId: string }> }) {
@@ -50,20 +50,35 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ con
 
   await pusherServer.trigger(`org-${user.orgId}-dm-${conversationId}`, 'dm.new', { message });
 
-  // Email notifications for @mentions in DMs (fire and forget)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://chat.vb.co';
-  for (const mentionedId of parsed.mentionedUserIds) {
-    if (mentionedId === user.id) continue;
-    const mentionedUser = orgUsers.find((u) => u.id === mentionedId);
-    if (mentionedUser?.email) {
+  const mentionedSet = new Set(parsed.mentionedUserIds);
+
+  // Notify all other conversation participants (fire and forget)
+  for (const participantId of (convo.participantIds ?? [])) {
+    if (participantId === user.id) continue;
+    const recipient = orgUsers.find((u) => u.id === participantId);
+    if (!recipient?.email) continue;
+
+    if (mentionedSet.has(participantId)) {
+      // Already mentioned — use the richer mention email
       sendMentionEmail({
         channelId: conversationId,
         channelName: 'direct message',
         messageText: body.content,
         senderName: user.name,
-        recipientEmail: mentionedUser.email,
-        recipientName: mentionedUser.name,
+        recipientEmail: recipient.email,
+        recipientName: recipient.name,
         channelUrl: `${appUrl}/dms/${conversationId}`,
+      }).catch(() => {});
+    } else {
+      // Regular DM notification
+      sendDmEmail({
+        conversationId,
+        messageText: body.content,
+        senderName: user.name,
+        recipientEmail: recipient.email,
+        recipientName: recipient.name,
+        dmUrl: `${appUrl}/dms/${conversationId}`,
       }).catch(() => {});
     }
   }

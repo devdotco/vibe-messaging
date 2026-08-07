@@ -56,6 +56,33 @@ async function sendNotification(to: string, subject: string, html: string, reply
   await resend.emails.send({ from: FROM, to, subject, html, replyTo }).catch(console.error);
 }
 
+interface DmNotificationData {
+  conversationId: string;
+  messageText: string;
+  senderName: string;
+  recipientEmail: string;
+  recipientName: string;
+  dmUrl: string;
+}
+
+export async function sendDmEmail(data: DmNotificationData) {
+  const replyTo = replyAddress('dm', data.conversationId, data.recipientEmail);
+  await sendNotification(
+    data.recipientEmail,
+    `${data.senderName} sent you a message`,
+    `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+      <h2 style="font-size:18px;margin-bottom:8px">💬 New direct message</h2>
+      <p style="color:#666;margin-bottom:16px">${data.senderName} sent you a message:</p>
+      <div style="border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:16px">
+        <p style="color:#374151;margin:0">${data.messageText}</p>
+      </div>
+      <a href="${data.dmUrl}" style="display:inline-block;background:#4f46e5;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600">Reply in ViBe Messaging</a>
+      <p style="color:#9ca3af;font-size:12px;margin-top:24px">Reply to this email to respond directly without logging in.</p>
+    </div>`,
+    replyTo
+  );
+}
+
 export async function sendMentionEmail(data: MentionNotificationData) {
   const replyTo = replyAddress('channel', data.channelId, data.recipientEmail);
   await sendNotification(

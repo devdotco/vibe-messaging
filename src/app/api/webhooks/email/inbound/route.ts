@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { messages, channels, users } from '@/lib/db/schema/messaging';
+import { messages, channels, users, dmMessages, dmConversations } from '@/lib/db/schema/messaging';
 import { eq, and, ilike } from 'drizzle-orm';
 import { verifyReplyAddress, stripQuotedReply } from '@/lib/email/notifications';
 import crypto from 'crypto';
@@ -66,6 +66,35 @@ export async function POST(req: NextRequest) {
       userId: user!.id,
       content: replyText,
       source: 'email',
+    });
+
+    return NextResponse.json({ ok: true });
+  }
+
+  if (type === 'dm') {
+    const conversationId = entityId;
+
+    const [convo] = await db.select().from(dmConversations)
+      .where(eq(dmConversations.id, conversationId)).limit(1);
+    if (!convo) return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+
+    let [user] = await db.select().from(users)
+      .where(and(eq(users.orgId, convo.orgId), eq(users.email, fromEmail))).limit(1);
+    if (!user) {
+      const name = from.replace(/<[^>]+>/, '').trim() || fromEmail.split('@')[0]!;
+      [user] = await db.insert(users).values({
+        orgId: convo.orgId,
+        email: fromEmail,
+        name,
+        status: 'active',
+      }).returning();
+    }
+
+    await db.insert(dmMessages).values({
+      conversationId,
+      orgId: convo.orgId,
+      userId: user!.id,
+      content: replyText,
     });
 
     return NextResponse.json({ ok: true });
