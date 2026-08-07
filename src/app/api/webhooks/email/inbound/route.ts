@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { messages, channels, users, dmMessages, dmConversations } from '@/lib/db/schema/messaging';
-import { eq, and, ilike } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { verifyReplyAddress, stripQuotedReply } from '@/lib/email/notifications';
+import { pusherServer } from '@/lib/pusher/server';
 import crypto from 'crypto';
 
 function verifyMailgunSignature(timestamp: string, token: string, signature: string): boolean {
@@ -59,14 +60,20 @@ export async function POST(req: NextRequest) {
       }).returning();
     }
 
-    // Insert message
-    await db.insert(messages).values({
+    // Insert message and broadcast via Pusher
+    const [message] = await db.insert(messages).values({
       channelId,
       orgId: channel.orgId,
       userId: user!.id,
       content: replyText,
       source: 'email',
-    });
+    }).returning();
+
+    await pusherServer.trigger(
+      `org-${channel.orgId}-channel-${channelId}`,
+      'message.new',
+      { message: { ...message, reactions: [] } },
+    );
 
     return NextResponse.json({ ok: true });
   }
@@ -90,12 +97,18 @@ export async function POST(req: NextRequest) {
       }).returning();
     }
 
-    await db.insert(dmMessages).values({
+    const [dmMessage] = await db.insert(dmMessages).values({
       conversationId,
       orgId: convo.orgId,
       userId: user!.id,
       content: replyText,
-    });
+    }).returning();
+
+    await pusherServer.trigger(
+      `org-${convo.orgId}-dm-${conversationId}`,
+      'dm.new',
+      { message: dmMessage },
+    );
 
     return NextResponse.json({ ok: true });
   }
