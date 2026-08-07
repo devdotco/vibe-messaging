@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { users, sessions } from '@/lib/db/schema/messaging';
+import { users, sessions, channels, channelMembers } from '@/lib/db/schema/messaging';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 
@@ -35,6 +35,20 @@ export async function GET(req: NextRequest) {
       status: 'active',
       isPlatformUser: true,
     }).returning();
+  }
+
+  // Auto-join all default channels
+  const defaultChannels = await db.select().from(channels)
+    .where(eq(channels.orgId, 'platform_default'));
+  if (defaultChannels.length > 0) {
+    await db.insert(channelMembers).values(
+      defaultChannels.map(ch => ({
+        channelId: ch.id,
+        userId: user.id,
+        orgId: 'platform_default',
+        role: 'member' as const,
+      }))
+    ).onConflictDoNothing();
   }
 
   // Create session
