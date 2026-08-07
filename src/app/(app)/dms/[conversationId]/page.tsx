@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { MessageList } from '@/components/messaging/message-list';
-import { MessageComposer } from '@/components/messaging/message-composer';
+import { RichComposer } from '@/components/messaging/rich-composer';
 import { getPusherClient } from '@/lib/pusher/client';
 import type { MessageWithReactions } from '@/components/messaging/message-item';
 import type { User } from '@/lib/db/schema/messaging';
@@ -89,7 +89,7 @@ export default function DmPage() {
         onReact={async () => {}}
         onReply={() => {}}
       />
-      <MessageComposer
+      <RichComposer
         onSend={handleSend}
         placeholder={`Message ${otherUser?.name ?? '…'}`}
         orgUsers={Object.values(users)}

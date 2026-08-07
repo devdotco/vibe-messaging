@@ -9,6 +9,7 @@ import { eq, and, gt, isNull, sql, desc } from 'drizzle-orm';
 import { Sidebar, type DmEntry } from '@/components/layout/sidebar';
 import { PresenceUpdater } from '@/components/messaging/presence-updater';
 import { SidebarPresenceSync } from '@/components/messaging/sidebar-presence-sync';
+import { AppSwitcher } from '@/components/layout/app-switcher';
 import { AppLayoutClient } from './layout-client';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -97,6 +98,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      <AppSwitcher />
       <AppLayoutClient
         channels={userChannels}
         dms={dmList}

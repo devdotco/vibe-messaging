@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { ChannelHeader } from '@/components/messaging/channel-header';
 import { MessageList } from '@/components/messaging/message-list';
-import { MessageComposer } from '@/components/messaging/message-composer';
+import { RichComposer } from '@/components/messaging/rich-composer';
 import { ChannelSettingsPanel } from '@/components/messaging/channel-settings-panel';
 import { getPusherClient } from '@/lib/pusher/client';
 import type { Channel, User } from '@/lib/db/schema/messaging';
@@ -202,7 +202,7 @@ export function ChannelView({ channel: initialChannel, initialMessages, usersMap
             onLoadMore={handleLoadMore}
             hasMore={hasMore}
           />
-          <MessageComposer
+          <RichComposer
             onSend={handleSend}
             placeholder={`Message #${channel.name}`}
             orgUsers={Object.values(usersMap)}
@@ -295,7 +295,7 @@ function ThreadPanel({ message, users, channelId, currentUser, onClose }: {
           onReply={() => {}}
         />
       </div>
-      <MessageComposer onSend={handleSend} placeholder="Reply in thread..." orgUsers={Object.values(users)} parentMessageId={message.id} />
+      <RichComposer onSend={handleSend} placeholder="Reply in thread..." orgUsers={Object.values(users)} parentMessageId={message.id} />
     </div>
   );
 }
