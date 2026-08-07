@@ -13,17 +13,29 @@ function replyToken(type: string, entityId: string, recipientEmail: string) {
     .digest('hex').slice(0, 16);
 }
 
+// Single-char type codes keep local part ≤64 chars (RFC 5321 limit)
+const TYPE_ENCODE: Record<string, string> = { channel: 'c', dm: 'd' };
+const TYPE_DECODE: Record<string, string> = { c: 'channel', d: 'dm' };
+
 function replyAddress(type: string, entityId: string, recipientEmail: string) {
-  return `reply+${type}-${entityId}-${replyToken(type, entityId, recipientEmail)}@${REPLY_DOMAIN}`;
+  const code = TYPE_ENCODE[type] ?? type[0]!;
+  const shortId = entityId.replace(/-/g, ''); // UUID without dashes: 32 chars
+  return `reply+${code}-${shortId}-${replyToken(type, entityId, recipientEmail)}@${REPLY_DOMAIN}`;
+}
+
+function restoreUuid(s: string) {
+  return `${s.slice(0,8)}-${s.slice(8,12)}-${s.slice(12,16)}-${s.slice(16,20)}-${s.slice(20)}`;
 }
 
 export function verifyReplyAddress(toAddress: string, fromEmail: string): { type: string; entityId: string } | null {
-  const match = toAddress.match(/reply\+(\w+)-([0-9a-f-]+)-([0-9a-f]+)@/);
+  const match = toAddress.match(/reply\+([a-z])-([0-9a-f]{32})-([0-9a-f]{16})@/);
   if (!match) return null;
-  const [, type, entityId, token] = match;
-  const expected = replyToken(type!, entityId!, fromEmail);
+  const [, code, shortId, token] = match;
+  const type = TYPE_DECODE[code!] ?? code!;
+  const entityId = restoreUuid(shortId!);
+  const expected = replyToken(type, entityId, fromEmail);
   if (expected !== token) return null;
-  return { type: type!, entityId: entityId! };
+  return { type, entityId };
 }
 
 export function stripQuotedReply(text: string): string {
