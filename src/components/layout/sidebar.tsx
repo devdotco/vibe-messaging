@@ -1,11 +1,11 @@
 'use client';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Hash, Lock, Megaphone, Plus, ChevronDown, ChevronRight,
   Globe, ShieldCheck, Search, Bell, MessageSquarePlus,
-  Bot, Settings, X,
+  Bot, Settings, X, Pencil, Users,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
@@ -33,7 +33,53 @@ interface Props {
 
 const CHANNEL_ICONS = { public: Hash, private: Lock, announcement: Megaphone };
 
-export function Sidebar({ channels, dms, currentUser, workspaceName, onNewChannel, unreadCounts = {}, notificationCount = 0, onOpenNotifications }: Props) {
+function RenameWorkspaceModal({ current, onClose, onSave }: { current: string; onClose: () => void; onSave: (name: string) => void }) {
+  const [name, setName] = useState(current);
+  const [saving, setSaving] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || name.trim() === current) { onClose(); return; }
+    setSaving(true);
+    await fetch('/api/messaging/workspace', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name.trim() }),
+    });
+    onSave(name.trim());
+  };
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+      onClick={onClose}
+    >
+      <div
+        style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px', width: '340px', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px', color: 'var(--text-primary)' }}>Rename workspace</h3>
+        <form onSubmit={submit}>
+          <input
+            autoFocus
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="Workspace name"
+            style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '14px', background: 'var(--bg)', color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box', marginBottom: '16px' }}
+          />
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+            <button type="button" onClick={onClose} style={{ padding: '7px 14px', border: '1px solid var(--border)', borderRadius: '6px', background: 'transparent', color: 'var(--text-secondary)', fontSize: '14px', cursor: 'pointer' }}>Cancel</button>
+            <button type="submit" disabled={saving || !name.trim()} style={{ padding: '7px 14px', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', cursor: 'pointer', opacity: saving || !name.trim() ? 0.6 : 1 }}>
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export function Sidebar({ channels, dms, currentUser, workspaceName: initialWorkspaceName, onNewChannel, unreadCounts = {}, notificationCount = 0, onOpenNotifications }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [channelsOpen, setChannelsOpen] = useState(true);
@@ -42,6 +88,17 @@ export function Sidebar({ channels, dms, currentUser, workspaceName, onNewChanne
   const [presenceMap, setPresenceMap] = useState<Record<string, string>>({});
   const [statusMessage, setStatusMessage] = useState('');
   const [showStatusEdit, setShowStatusEdit] = useState(false);
+  const [workspaceName, setWorkspaceName] = useState(initialWorkspaceName ?? 'My Workspace');
+  const [showWsMenu, setShowWsMenu] = useState(false);
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const wsMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showWsMenu) return;
+    const h = (e: MouseEvent) => { if (wsMenuRef.current && !wsMenuRef.current.contains(e.target as Node)) setShowWsMenu(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [showWsMenu]);
 
   // Live presence updates via CustomEvent from SidebarPresenceSync
   useEffect(() => {
@@ -112,12 +169,51 @@ export function Sidebar({ channels, dms, currentUser, workspaceName, onNewChanne
         className="flex items-center justify-between px-4 py-3"
         style={{ borderBottom: '1px solid var(--sidebar-border)' }}
       >
-        <button className="flex items-center gap-1.5 font-bold text-sm hover:opacity-80 transition-opacity truncate max-w-[160px]">
-          <span className="truncate" style={{ color: 'var(--sidebar-text)' }}>
-            {workspaceName ?? 'My Workspace'}
-          </span>
-          <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
-        </button>
+        <div ref={wsMenuRef} className="relative">
+          <button
+            onClick={() => setShowWsMenu(v => !v)}
+            className="flex items-center gap-1.5 font-bold text-sm hover:opacity-80 transition-opacity truncate max-w-[160px]"
+          >
+            <span className="truncate" style={{ color: 'var(--sidebar-text)' }}>
+              {workspaceName}
+            </span>
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
+          </button>
+          {showWsMenu && (
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 200,
+              background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+              borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.25)', width: '200px', overflow: 'hidden',
+            }}>
+              <div style={{ padding: '6px' }}>
+                <button
+                  onClick={() => { setShowWsMenu(false); setShowRenameModal(true); }}
+                  className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm hover:bg-[var(--panel-hover)] transition-colors"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  <Pencil className="h-3.5 w-3.5 opacity-60" />
+                  Rename workspace
+                </button>
+                <Link
+                  href="/admin/users"
+                  onClick={() => setShowWsMenu(false)}
+                  className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm hover:bg-[var(--panel-hover)] transition-colors"
+                  style={{ color: 'var(--text-primary)', textDecoration: 'none' }}
+                >
+                  <Users className="h-3.5 w-3.5 opacity-60" />
+                  Manage members
+                </Link>
+              </div>
+            </div>
+          )}
+          {showRenameModal && (
+            <RenameWorkspaceModal
+              current={workspaceName}
+              onClose={() => setShowRenameModal(false)}
+              onSave={(name) => { setWorkspaceName(name); setShowRenameModal(false); }}
+            />
+          )}
+        </div>
         <div className="flex items-center gap-1">
           {notificationCount > 0 && (
             <button
