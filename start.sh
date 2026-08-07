@@ -8,6 +8,17 @@ sed 's/--> statement-breakpoint/;/g' db/migrations/0000_init.sql | \
   grep -v "^psql\|already exists\|duplicate" || true
 echo "[startup] Migrations done."
 
+echo "[startup] Deduplicating channels..."
+psql "$DATABASE_URL" <<'DEDUP'
+-- Keep only the earliest channel per (org_id, name), delete the rest
+DELETE FROM channels
+WHERE id NOT IN (
+  SELECT DISTINCT ON (org_id, name) id
+  FROM channels
+  ORDER BY org_id, name, created_at ASC
+);
+DEDUP
+
 echo "[startup] Seeding Claude bot + RBAC policies..."
 psql "$DATABASE_URL" -v bot_id="$CLAUDE_BOT_USER_ID" <<'SQL'
 -- Claude bot user
@@ -77,19 +88,28 @@ INSERT INTO claude_role_policies (org_id, role, data_domain, allowed) VALUES
 ('platform_default','GUEST','messages.history',true)
 ON CONFLICT (org_id, role, data_domain) DO NOTHING;
 
--- Default channels
-WITH ins AS (
-  INSERT INTO channels (org_id, name, type, is_default, claude_enabled)
-  VALUES
-    ('platform_default','general','public',true,true),
-    ('platform_default','announcements','announcement',false,true),
-    ('platform_default','random','public',false,true)
-  ON CONFLICT DO NOTHING
-  RETURNING id
-)
-INSERT INTO channel_members (channel_id, user_id, org_id, role)
-SELECT id, :'bot_id', 'platform_default', 'member' FROM ins
-ON CONFLICT DO NOTHING;
+-- Default channels (idempotent — skip if name already exists for org)
+DO $$
+DECLARE
+  ch_id uuid;
+  ch_name text;
+  ch_type text;
+  ch_default boolean;
+BEGIN
+  FOREACH ch_name, ch_type, ch_default IN ARRAY
+    ARRAY[ARRAY['general','public','true'], ARRAY['announcements','announcement','false'], ARRAY['random','public','false']]
+  LOOP
+    SELECT id INTO ch_id FROM channels WHERE org_id='platform_default' AND name=ch_name LIMIT 1;
+    IF ch_id IS NULL THEN
+      INSERT INTO channels (org_id, name, type, is_default, claude_enabled)
+      VALUES ('platform_default', ch_name, ch_type, ch_default::boolean, true)
+      RETURNING id INTO ch_id;
+    END IF;
+    INSERT INTO channel_members (channel_id, user_id, org_id, role)
+    VALUES (ch_id, :'bot_id', 'platform_default', 'member')
+    ON CONFLICT DO NOTHING;
+  END LOOP;
+END $$;
 
 SQL
 echo "[startup] Seed done."

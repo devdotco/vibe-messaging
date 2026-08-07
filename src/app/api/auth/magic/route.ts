@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { users, sessions, channels, channelMembers } from '@/lib/db/schema/messaging';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import crypto from 'crypto';
 
 function hashToken(token: string) {
@@ -37,9 +37,9 @@ export async function GET(req: NextRequest) {
     }).returning();
   }
 
-  // Auto-join all default channels
+  // Auto-join default channels (is_default=true, deduplicated by name)
   const defaultChannels = await db.select().from(channels)
-    .where(eq(channels.orgId, 'platform_default'));
+    .where(and(eq(channels.orgId, 'platform_default'), eq(channels.isDefault, true)));
   if (defaultChannels.length > 0) {
     await db.insert(channelMembers).values(
       defaultChannels.map(ch => ({
