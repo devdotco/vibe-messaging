@@ -15,25 +15,29 @@ interface Props {
   message: MessageWithReactions;
   user?: User;
   currentUserId?: string;
+  channelId?: string;
   onReact: (messageId: string, emoji: string) => void;
   onReply: (message: MessageWithReactions) => void;
   onEdit?: (message: MessageWithReactions) => void;
   onDelete?: (messageId: string) => void;
   onCreateTask?: (message: MessageWithReactions) => void;
+  onPinToggle?: (messageId: string, isPinned: boolean) => void;
   isStreaming?: boolean;
   streamContent?: string;
 }
 
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '🚀', '👀'];
 
-export function MessageItem({ message, user, currentUserId, onReact, onReply, onEdit, onDelete, onCreateTask, isStreaming, streamContent }: Props) {
+export function MessageItem({ message, user, currentUserId, channelId, onReact, onReply, onEdit, onDelete, onCreateTask, onPinToggle, isStreaming, streamContent }: Props) {
   const [hovering, setHovering] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [saving, setSaving] = useState(false);
+  const [pinning, setPinning] = useState(false);
 
   const isAI = message.isAiResponse;
   const content = isStreaming ? (streamContent ?? '...') : message.content;
+  const isPinned = message.isPinned ?? false;
 
   async function handleSaveEdit() {
     if (!editContent.trim() || saving) return;
@@ -58,6 +62,18 @@ export function MessageItem({ message, user, currentUserId, onReact, onReply, on
 
   async function handleRemoveReaction(emoji: string) {
     await fetch(`/api/messaging/messages/${message.id}/reactions/${encodeURIComponent(emoji)}`, { method: 'DELETE' });
+  }
+
+  async function handlePinToggle() {
+    if (!channelId || pinning) return;
+    setPinning(true);
+    try {
+      const method = isPinned ? 'DELETE' : 'POST';
+      await fetch(`/api/messaging/channels/${channelId}/messages/${message.id}/pin`, { method });
+      onPinToggle?.(message.id, !isPinned);
+    } finally {
+      setPinning(false);
+    }
   }
 
   const reactions = message.reactions ?? [];
@@ -103,6 +119,7 @@ export function MessageItem({ message, user, currentUserId, onReact, onReply, on
             {message.createdAt ? formatTime(message.createdAt) : ''}
           </span>
           {message.editedAt && <span className="text-xs text-[var(--text-muted)]">(edited)</span>}
+          {isPinned && <span className="text-xs" title="Pinned message">📌</span>}
         </div>
 
         {/* Content — inline edit mode */}
@@ -210,6 +227,21 @@ export function MessageItem({ message, user, currentUserId, onReact, onReply, on
           ))}
           <div className="w-px h-4 bg-[var(--border)] mx-0.5" />
           <button onClick={() => onReply(message)} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] px-1" title="Reply in thread">↩</button>
+          {channelId && !isAI && (
+            <button
+              onClick={handlePinToggle}
+              disabled={pinning}
+              className={cn(
+                'text-xs px-1 transition-colors disabled:opacity-50',
+                isPinned
+                  ? 'text-[var(--accent)] hover:text-[var(--text-muted)]'
+                  : 'text-[var(--text-muted)] hover:text-[var(--accent)]',
+              )}
+              title={isPinned ? 'Unpin message' : 'Pin message'}
+            >
+              📌
+            </button>
+          )}
           {onCreateTask && (
             <button onClick={() => onCreateTask(message)} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] px-1">Task</button>
           )}

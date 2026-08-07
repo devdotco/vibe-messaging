@@ -8,6 +8,14 @@ sed 's/--> statement-breakpoint/;/g' db/migrations/0000_init.sql | \
   grep -v "^psql\|already exists\|duplicate" || true
 echo "[startup] Migrations done."
 
+echo "[startup] Adding pin columns if missing..."
+psql "$DATABASE_URL" <<'PIN_SQL'
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_pinned boolean DEFAULT false;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned_at timestamptz;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned_by uuid;
+PIN_SQL
+echo "[startup] Pin columns done."
+
 echo "[startup] Deduplicating channels..."
 psql "$DATABASE_URL" <<'DEDUP'
 -- Keep only the earliest channel per (org_id, name), delete the rest

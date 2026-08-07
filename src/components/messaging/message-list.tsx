@@ -7,6 +7,7 @@ interface Props {
   messages: MessageWithReactions[];
   users: Record<string, User>;
   currentUserId?: string;
+  channelId?: string;
   streamingMessageId?: string;
   streamingContent?: string;
   onReact: (messageId: string, emoji: string) => void;
@@ -14,11 +15,12 @@ interface Props {
   onEdit?: (message: MessageWithReactions) => void;
   onDelete?: (messageId: string) => void;
   onCreateTask?: (message: MessageWithReactions) => void;
+  onPinToggle?: (messageId: string, isPinned: boolean) => void;
   onLoadMore?: () => void;
   hasMore?: boolean;
 }
 
-export function MessageList({ messages, users, currentUserId, streamingMessageId, streamingContent, onReact, onReply, onEdit, onDelete, onCreateTask, onLoadMore, hasMore }: Props) {
+export function MessageList({ messages, users, currentUserId, channelId, streamingMessageId, streamingContent, onReact, onReply, onEdit, onDelete, onCreateTask, onPinToggle, onLoadMore, hasMore }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -63,11 +65,13 @@ export function MessageList({ messages, users, currentUserId, streamingMessageId
               message={msg}
               user={users[msg.userId]}
               currentUserId={currentUserId}
+              channelId={channelId}
               onReact={onReact}
               onReply={onReply}
               onEdit={onEdit}
               onDelete={onDelete}
               onCreateTask={onCreateTask}
+              onPinToggle={onPinToggle}
               isStreaming={msg.id === streamingMessageId}
               streamContent={msg.id === streamingMessageId ? streamingContent : undefined}
             />

@@ -1,12 +1,7 @@
 'use client';
-import { Hash, Lock, Megaphone, Settings, Bot, Bell, Search, Users } from 'lucide-react';
+import { Hash, Lock, Megaphone, Settings, Bot, Search, Users } from 'lucide-react';
 import type { Channel } from '@/lib/db/schema/messaging';
-
-interface Props {
-  channel: Channel;
-  memberCount?: number;
-  onSettings?: () => void;
-}
+import type { ReactNode } from 'react';
 
 const TYPE_ICONS = {
   public: Hash,
@@ -14,7 +9,23 @@ const TYPE_ICONS = {
   announcement: Megaphone,
 };
 
-export function ChannelHeader({ channel, memberCount, onSettings }: Props) {
+type Tab = 'messages' | 'files' | 'pins';
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'messages', label: 'Messages' },
+  { id: 'files', label: 'Files' },
+  { id: 'pins', label: 'Pins' },
+];
+
+interface Props {
+  channel: Channel;
+  memberCount?: number;
+  onSettings?: () => void;
+  activeTab?: Tab;
+  onTabChange?: (tab: Tab) => void;
+  extraActions?: ReactNode;
+}
+
+export function ChannelHeader({ channel, memberCount, onSettings, activeTab = 'messages', onTabChange, extraActions }: Props) {
   const Icon = TYPE_ICONS[channel.type as keyof typeof TYPE_ICONS] ?? Hash;
 
   return (
@@ -55,12 +66,8 @@ export function ChannelHeader({ channel, memberCount, onSettings }: Props) {
           >
             <Search className="h-4 w-4" />
           </button>
-          <button
-            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--panel-hover)] transition-colors"
-            title="Notification preferences"
-          >
-            <Bell className="h-4 w-4" />
-          </button>
+          {/* Sound toggle (SoundManager or similar) injected here */}
+          {extraActions}
           <button
             onClick={onSettings}
             className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--panel-hover)] transition-colors"
@@ -73,18 +80,22 @@ export function ChannelHeader({ channel, memberCount, onSettings }: Props) {
 
       {/* Tab bar */}
       <div className="flex items-center px-5 gap-0 border-t border-[var(--border)]">
-        {['Messages', 'Files', 'Pins'].map((tab, i) => (
-          <button
-            key={tab}
-            className="px-3 py-2 text-xs font-medium border-b-2 transition-colors -mb-px"
-            style={{
-              borderColor: i === 0 ? 'var(--accent)' : 'transparent',
-              color: i === 0 ? 'var(--accent)' : 'var(--text-muted)',
-            }}
-          >
-            {tab}
-          </button>
-        ))}
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => onTabChange?.(tab.id)}
+              className="px-3 py-2 text-xs font-medium border-b-2 transition-colors -mb-px"
+              style={{
+                borderColor: isActive ? 'var(--accent)' : 'transparent',
+                color: isActive ? 'var(--accent)' : 'var(--text-muted)',
+              }}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

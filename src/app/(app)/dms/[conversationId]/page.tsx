@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { MessageList } from '@/components/messaging/message-list';
 import { RichComposer } from '@/components/messaging/rich-composer';
 import { getPusherClient } from '@/lib/pusher/client';
+import { playMessageSound } from '@/lib/sounds';
 import type { MessageWithReactions } from '@/components/messaging/message-item';
 import type { User } from '@/lib/db/schema/messaging';
 
@@ -47,9 +48,15 @@ export default function DmPage() {
     const sub = pusher.subscribe(ch);
     sub.bind('dm.new', ({ message }: { message: MessageWithReactions }) => {
       setMessages((prev) => [...prev, { ...message, reactions: message.reactions ?? [] }]);
+
+      // Play sound for incoming DMs (not our own)
+      if (message.userId !== currentUserId) {
+        const soundEnabled = localStorage.getItem('vibe:sounds') !== 'false';
+        if (soundEnabled) playMessageSound();
+      }
     });
     return () => { sub.unbind_all(); pusher.unsubscribe(ch); };
-  }, [conversationId, orgId]);
+  }, [conversationId, orgId, currentUserId]);
 
   async function handleSend(content: string) {
     await fetch(`/api/messaging/dms/${conversationId}/messages`, {

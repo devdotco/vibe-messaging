@@ -4,9 +4,14 @@ import { ChannelHeader } from '@/components/messaging/channel-header';
 import { MessageList } from '@/components/messaging/message-list';
 import { RichComposer } from '@/components/messaging/rich-composer';
 import { ChannelSettingsPanel } from '@/components/messaging/channel-settings-panel';
+import { SoundManager } from '@/components/messaging/sound-manager';
+import { FilesTab } from '@/components/messaging/files-tab';
+import { PinsTab } from '@/components/messaging/pins-tab';
 import { getPusherClient } from '@/lib/pusher/client';
 import type { Channel, User } from '@/lib/db/schema/messaging';
 import type { MessageWithReactions } from '@/components/messaging/message-item';
+
+type Tab = 'messages' | 'files' | 'pins';
 
 interface Props {
   channel: Channel;
@@ -36,6 +41,7 @@ export function ChannelView({ channel: initialChannel, initialMessages, usersMap
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [taskMessageContent, setTaskMessageContent] = useState('');
   const [linkedProjects, setLinkedProjects] = useState<{ projectId: string }[]>([]);
+  const [activeTab, setActiveTab] = useState<Tab>('messages');
 
   // Pusher real-time subscription
   useEffect(() => {
@@ -56,6 +62,14 @@ export function ChannelView({ channel: initialChannel, initialMessages, usersMap
 
     sub.bind('message.deleted', ({ messageId }: { messageId: string }) => {
       setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    });
+
+    sub.bind('message.pinned', ({ messageId }: { messageId: string }) => {
+      setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, isPinned: true } : m));
+    });
+
+    sub.bind('message.unpinned', ({ messageId }: { messageId: string }) => {
+      setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, isPinned: false, pinnedAt: null, pinnedBy: null } : m));
     });
 
     sub.bind('message.reaction', ({ messageId, emoji, userId, action }: { messageId: string; emoji: string; userId: string; action: 'add' | 'remove' }) => {
@@ -97,7 +111,9 @@ export function ChannelView({ channel: initialChannel, initialMessages, usersMap
           createdAt: new Date(), reactions: [],
           contentHtml: null, aiTokensUsed: null, aiCostUsd: null,
           parentMessageId: null, threadReplyCount: 0, threadLastReplyAt: null,
-          mentions: null, hasClaudeMention: false, editedAt: null, deletedAt: null, metadata: null,
+          mentions: null, hasClaudeMention: false,
+          isPinned: false, pinnedAt: null, pinnedBy: null,
+          editedAt: null, deletedAt: null, metadata: null,
         } as MessageWithReactions];
       });
     });
@@ -154,6 +170,10 @@ export function ChannelView({ channel: initialChannel, initialMessages, usersMap
     // inline edit handled inside MessageItem — this is just a no-op placeholder to show the Edit button
   }, []);
 
+  const handlePinToggle = useCallback((messageId: string, isPinned: boolean) => {
+    setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, isPinned } : m));
+  }, []);
+
   const handleCreateTask = useCallback(async (message: MessageWithReactions) => {
     setTaskMessageContent(message.content);
     // Fetch linked projects for this channel
@@ -184,31 +204,55 @@ export function ChannelView({ channel: initialChannel, initialMessages, usersMap
         channel={channel}
         memberCount={memberCount}
         onSettings={() => setShowSettings(true)}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        extraActions={
+          <SoundManager
+            channelId={channel.id}
+            currentUserId={currentUser.id}
+            orgId={currentUser.orgId}
+            currentUserName={currentUser.name}
+          />
+        }
       />
 
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <MessageList
-            messages={topLevelMessages}
-            users={usersMap}
-            currentUserId={currentUser.id}
-            streamingMessageId={streamingId}
-            streamingContent={streamingContent}
-            onReact={handleReact}
-            onReply={(msg) => setThreadMessage(msg)}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onCreateTask={handleCreateTask}
-            onLoadMore={handleLoadMore}
-            hasMore={hasMore}
-          />
-          <RichComposer
-            onSend={handleSend}
-            placeholder={`Message #${channel.name}`}
-            orgUsers={Object.values(usersMap)}
-            channelId={channel.id}
-            typingUsers={typingUsers}
-          />
+          {activeTab === 'messages' && (
+            <>
+              <MessageList
+                messages={topLevelMessages}
+                users={usersMap}
+                currentUserId={currentUser.id}
+                channelId={channel.id}
+                streamingMessageId={streamingId}
+                streamingContent={streamingContent}
+                onReact={handleReact}
+                onReply={(msg) => setThreadMessage(msg)}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onCreateTask={handleCreateTask}
+                onPinToggle={handlePinToggle}
+                onLoadMore={handleLoadMore}
+                hasMore={hasMore}
+              />
+              <RichComposer
+                onSend={handleSend}
+                placeholder={`Message #${channel.name}`}
+                orgUsers={Object.values(usersMap)}
+                channelId={channel.id}
+                typingUsers={typingUsers}
+              />
+            </>
+          )}
+
+          {activeTab === 'files' && (
+            <FilesTab channelId={channel.id} />
+          )}
+
+          {activeTab === 'pins' && (
+            <PinsTab channelId={channel.id} currentUserId={currentUser.id} />
+          )}
         </div>
 
         {/* Thread panel */}
