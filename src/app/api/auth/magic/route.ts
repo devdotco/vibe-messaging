@@ -1,0 +1,60 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+import { users, sessions } from '@/lib/db/schema/messaging';
+import { eq } from 'drizzle-orm';
+import crypto from 'crypto';
+
+function hashToken(token: string) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+export async function GET(req: NextRequest) {
+  const bypass = process.env.BYPASS_SECRET;
+  if (!bypass) {
+    return NextResponse.json({ error: 'Not available' }, { status: 404 });
+  }
+
+  const { searchParams } = req.nextUrl;
+  const secret = searchParams.get('secret');
+  const email = searchParams.get('email') ?? 'nate@dev.co';
+
+  if (secret !== bypass) {
+    return NextResponse.json({ error: 'Invalid secret' }, { status: 403 });
+  }
+
+  // Find or create user
+  let [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+
+  if (!user) {
+    const name = email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    [user] = await db.insert(users).values({
+      orgId: 'platform_default',
+      email,
+      name,
+      role: 'PLATFORM_ADMIN',
+      status: 'active',
+      isPlatformUser: true,
+    }).returning();
+  }
+
+  // Create session
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+  await db.insert(sessions).values({
+    userId: user.id,
+    tokenHash: hashToken(token),
+    expiresAt,
+  });
+
+  const res = NextResponse.redirect(new URL('/', req.url));
+  res.cookies.set('__vibe_session', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    expires: expiresAt,
+    path: '/',
+  });
+
+  return res;
+}
