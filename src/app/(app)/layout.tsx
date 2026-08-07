@@ -1,10 +1,15 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/session';
 import { db } from '@/lib/db';
-import { channels, channelMembers, users, dmConversations, userPresence, messages } from '@/lib/db/schema/messaging';
-import { eq, and, gt, isNull, sql } from 'drizzle-orm';
-import { Sidebar } from '@/components/layout/sidebar';
+import {
+  channels, channelMembers, users, dmConversations,
+  userPresence, messages, workspaces, notifications,
+} from '@/lib/db/schema/messaging';
+import { eq, and, gt, isNull, sql, desc } from 'drizzle-orm';
+import { Sidebar, type DmEntry } from '@/components/layout/sidebar';
 import { PresenceUpdater } from '@/components/messaging/presence-updater';
+import { SidebarPresenceSync } from '@/components/messaging/sidebar-presence-sync';
+import { AppLayoutClient } from './layout-client';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -26,7 +31,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
     const conditions = [
       eq(messages.channelId, channelId),
-      eq(messages.orgId, user.id ? user.orgId : ''),
+      eq(messages.orgId, user.orgId),
       isNull(messages.parentMessageId),
       isNull(messages.deletedAt),
     ];
@@ -42,14 +47,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     unreadCounts[channelId] = row?.count ?? 0;
   }
 
-  // DM conversations — fetch other participants
+  // DM conversations — include conversation ID so sidebar can navigate directly
   const convos = await db
     .select()
     .from(dmConversations)
-    .where(and(eq(dmConversations.orgId, user.orgId), sql`${user.id} = ANY(${dmConversations.participantIds})`));
+    .where(and(eq(dmConversations.orgId, user.orgId), sql`${user.id} = ANY(${dmConversations.participantIds})`))
+    .orderBy(desc(dmConversations.createdAt));
 
-  const otherUserIds = convos.flatMap((c) => (c.participantIds ?? []).filter((id) => id !== user.id));
-  const uniqueOtherIds = [...new Set(otherUserIds)];
+  const otherUserMap: Record<string, string> = {};
+  for (const c of convos) {
+    const otherId = (c.participantIds ?? []).find((id) => id !== user.id);
+    if (otherId) otherUserMap[otherId] = c.id;
+  }
+
+  const uniqueOtherIds = Object.keys(otherUserMap);
 
   const otherUsers = uniqueOtherIds.length > 0
     ? await db.select({ user: users, presence: userPresence })
@@ -58,18 +69,45 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         .where(sql`${users.id} = ANY(${uniqueOtherIds})`)
     : [];
 
-  const dmList = otherUsers.map(({ user: u, presence }) => ({
+  const dmList: DmEntry[] = otherUsers.map(({ user: u, presence }) => ({
+    conversationId: otherUserMap[u.id] ?? '',
     userId: u.id,
     name: u.name,
     avatarUrl: u.avatarUrl,
     presence: presence?.status ?? 'offline',
+    statusMessage: presence?.statusMessage,
   }));
+
+  // Workspace name
+  const [workspace] = await db
+    .select()
+    .from(workspaces)
+    .where(eq(workspaces.orgId, user.orgId))
+    .limit(1);
+
+  const workspaceName = workspace?.name ?? 'My Workspace';
+
+  // Unread notification count
+  const [notifRow] = await db
+    .select({ count: sql<number>`COUNT(*)`.mapWith(Number) })
+    .from(notifications)
+    .where(and(eq(notifications.userId, user.id), eq(notifications.isRead, false)));
+
+  const notificationCount = notifRow?.count ?? 0;
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-      <Sidebar channels={userChannels} dms={dmList} currentUser={user} unreadCounts={unreadCounts} />
+      <AppLayoutClient
+        channels={userChannels}
+        dms={dmList}
+        currentUser={user}
+        workspaceName={workspaceName}
+        unreadCounts={unreadCounts}
+        notificationCount={notificationCount}
+      />
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg)' }}>
         <PresenceUpdater />
+        <SidebarPresenceSync orgId={user.orgId} />
         {children}
       </main>
     </div>

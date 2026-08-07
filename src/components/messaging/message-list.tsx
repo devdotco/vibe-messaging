@@ -1,23 +1,24 @@
 'use client';
 import React, { useEffect, useRef, useCallback } from 'react';
-import { MessageItem } from './message-item';
-import type { Message, User } from '@/lib/db/schema/messaging';
+import { MessageItem, type MessageWithReactions } from './message-item';
+import type { User } from '@/lib/db/schema/messaging';
 
 interface Props {
-  messages: Message[];
+  messages: MessageWithReactions[];
   users: Record<string, User>;
+  currentUserId?: string;
   streamingMessageId?: string;
   streamingContent?: string;
   onReact: (messageId: string, emoji: string) => void;
-  onReply: (message: Message) => void;
-  onEdit?: (message: Message) => void;
+  onReply: (message: MessageWithReactions) => void;
+  onEdit?: (message: MessageWithReactions) => void;
   onDelete?: (messageId: string) => void;
-  onCreateTask?: (message: Message) => void;
+  onCreateTask?: (message: MessageWithReactions) => void;
   onLoadMore?: () => void;
   hasMore?: boolean;
 }
 
-export function MessageList({ messages, users, streamingMessageId, streamingContent, onReact, onReply, onEdit, onDelete, onCreateTask, onLoadMore, hasMore }: Props) {
+export function MessageList({ messages, users, currentUserId, streamingMessageId, streamingContent, onReact, onReply, onEdit, onDelete, onCreateTask, onLoadMore, hasMore }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -56,11 +57,12 @@ export function MessageList({ messages, users, streamingMessageId, streamingCont
           {gi > 0 && isDifferentDay(group[0].createdAt, grouped[gi - 1][0].createdAt) && (
             <DateSeparator date={group[0].createdAt} />
           )}
-          {group.map((msg, i) => (
+          {group.map((msg) => (
             <MessageItem
               key={msg.id}
               message={msg}
               user={users[msg.userId]}
+              currentUserId={currentUserId}
               onReact={onReact}
               onReply={onReply}
               onEdit={onEdit}
@@ -77,9 +79,9 @@ export function MessageList({ messages, users, streamingMessageId, streamingCont
   );
 }
 
-function groupMessages(messages: Message[]): Message[][] {
-  const groups: Message[][] = [];
-  let current: Message[] = [];
+function groupMessages(messages: MessageWithReactions[]): MessageWithReactions[][] {
+  const groups: MessageWithReactions[][] = [];
+  let current: MessageWithReactions[] = [];
 
   for (const msg of messages) {
     if (current.length === 0) {
