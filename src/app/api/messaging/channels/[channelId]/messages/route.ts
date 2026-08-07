@@ -7,7 +7,7 @@ import { requireUser } from '@/lib/auth/session';
 import { pusherServer } from '@/lib/pusher/server';
 import { parseMentions } from '@/lib/claude/mention-parser';
 import { runClaudePipeline } from '@/lib/claude/pipeline';
-import { eq, and, isNull, lt, desc } from 'drizzle-orm';
+import { eq, and, isNull, lt, desc, sql } from 'drizzle-orm';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ channelId: string }> }) {
   const user = await requireUser();
@@ -40,6 +40,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ chan
     .where(and(...conditions))
     .orderBy(desc(messages.createdAt))
     .limit(limit);
+
+  // Mark channel as read for this user
+  await db
+    .update(channelMembers)
+    .set({ lastReadAt: sql`NOW()` })
+    .where(and(eq(channelMembers.channelId, channelId), eq(channelMembers.userId, user.id)));
 
   return NextResponse.json(rows.reverse());
 }

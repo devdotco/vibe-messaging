@@ -1,5 +1,5 @@
 'use client';
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Send, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -11,14 +11,26 @@ interface Props {
   orgUsers?: User[];
   parentMessageId?: string;
   disabled?: boolean;
+  channelId?: string;
+  typingUsers?: { userId: string; name: string }[];
 }
 
-export function MessageComposer({ onSend, placeholder = 'Message...', orgUsers = [], parentMessageId, disabled }: Props) {
+export function MessageComposer({
+  onSend,
+  placeholder = 'Message...',
+  orgUsers = [],
+  parentMessageId,
+  disabled,
+  channelId,
+  typingUsers = [],
+}: Props) {
   const [content, setContent] = useState('');
   const [sending, setSending] = useState(false);
   const [showMentions, setShowMentions] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isTypingRef = useRef(false);
 
   const claudeSuggestion = { id: 'claude', name: 'Claude', role: 'AI' };
 
@@ -26,6 +38,26 @@ export function MessageComposer({ onSend, placeholder = 'Message...', orgUsers =
     claudeSuggestion,
     ...orgUsers.filter((u) => u.name.toLowerCase().includes(mentionQuery.toLowerCase())),
   ];
+
+  // Cleanup typing timer on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    };
+  }, []);
+
+  const sendTyping = useCallback(async (typing: boolean) => {
+    if (!channelId) return;
+    try {
+      await fetch(`/api/messaging/channels/${channelId}/typing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ typing }),
+      });
+    } catch {
+      // best-effort
+    }
+  }, [channelId]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -38,6 +70,19 @@ export function MessageComposer({ onSend, placeholder = 'Message...', orgUsers =
   function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const val = e.target.value;
     setContent(val);
+
+    // Typing indicator logic (debounced, only when channelId is set)
+    if (channelId) {
+      if (!isTypingRef.current) {
+        isTypingRef.current = true;
+        sendTyping(true);
+      }
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = setTimeout(() => {
+        isTypingRef.current = false;
+        sendTyping(false);
+      }, 3000);
+    }
 
     // Detect @mention
     const cursor = e.target.selectionStart;
@@ -70,6 +115,14 @@ export function MessageComposer({ onSend, placeholder = 'Message...', orgUsers =
   async function handleSend() {
     const trimmed = content.trim();
     if (!trimmed || sending) return;
+
+    // Stop typing indicator immediately on send
+    if (channelId && isTypingRef.current) {
+      isTypingRef.current = false;
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      sendTyping(false);
+    }
+
     setSending(true);
     try {
       await onSend(trimmed, parentMessageId);
@@ -80,8 +133,22 @@ export function MessageComposer({ onSend, placeholder = 'Message...', orgUsers =
     }
   }
 
+  // Format typing indicator text
+  const typingText = typingUsers.length === 0
+    ? null
+    : typingUsers.length === 1
+    ? `${typingUsers[0].name} is typing...`
+    : typingUsers.length === 2
+    ? `${typingUsers[0].name} and ${typingUsers[1].name} are typing...`
+    : 'Several people are typing...';
+
   return (
     <div className="relative border-t border-[var(--border)] bg-[var(--bg-elevated)] p-3">
+      {/* Typing indicator */}
+      {typingText && (
+        <div className="pb-1 text-xs text-[var(--text-muted)] italic">{typingText}</div>
+      )}
+
       {/* Mention dropdown */}
       {showMentions && mentionCandidates.length > 0 && (
         <div className="absolute bottom-full left-3 mb-1 w-56 bg-[var(--panel)] border border-[var(--border)] rounded-lg shadow-lg overflow-hidden z-20">

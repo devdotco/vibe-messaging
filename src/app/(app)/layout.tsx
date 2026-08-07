@@ -1,22 +1,46 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/session';
 import { db } from '@/lib/db';
-import { channels, channelMembers, users, dmConversations, userPresence } from '@/lib/db/schema/messaging';
-import { eq, and } from 'drizzle-orm';
+import { channels, channelMembers, users, dmConversations, userPresence, messages } from '@/lib/db/schema/messaging';
+import { eq, and, gt, isNull, sql } from 'drizzle-orm';
 import { Sidebar } from '@/components/layout/sidebar';
-import { sql } from 'drizzle-orm';
+import { PresenceUpdater } from '@/components/messaging/presence-updater';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   if (!user) redirect('/sign-in');
 
   const memberships = await db
-    .select({ channel: channels })
+    .select({ channel: channels, lastReadAt: channelMembers.lastReadAt })
     .from(channelMembers)
     .innerJoin(channels, eq(channelMembers.channelId, channels.id))
     .where(and(eq(channelMembers.userId, user.id), eq(channels.isArchived, false)));
 
   const userChannels = memberships.map((m) => m.channel);
+
+  // Compute unread counts
+  const unreadCounts: Record<string, number> = {};
+  for (const membership of memberships) {
+    const channelId = membership.channel.id;
+    const lastReadAt = membership.lastReadAt;
+
+    const conditions = [
+      eq(messages.channelId, channelId),
+      eq(messages.orgId, user.id ? user.orgId : ''),
+      isNull(messages.parentMessageId),
+      isNull(messages.deletedAt),
+    ];
+    if (lastReadAt) {
+      conditions.push(gt(messages.createdAt, lastReadAt));
+    }
+
+    const [row] = await db
+      .select({ count: sql<number>`COUNT(*)`.mapWith(Number) })
+      .from(messages)
+      .where(and(...conditions));
+
+    unreadCounts[channelId] = row?.count ?? 0;
+  }
 
   // DM conversations — fetch other participants
   const convos = await db
@@ -43,8 +67,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-      <Sidebar channels={userChannels} dms={dmList} currentUser={user} />
+      <Sidebar channels={userChannels} dms={dmList} currentUser={user} unreadCounts={unreadCounts} />
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg)' }}>
+        <PresenceUpdater />
         {children}
       </main>
     </div>

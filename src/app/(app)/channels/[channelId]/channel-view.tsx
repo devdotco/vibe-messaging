@@ -14,11 +14,17 @@ interface Props {
   memberCount: number;
 }
 
+interface TypingUser {
+  userId: string;
+  name: string;
+}
+
 export function ChannelView({ channel, initialMessages, usersMap, currentUser, memberCount }: Props) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [streamingId, setStreamingId] = useState<string | undefined>();
   const [streamingContent, setStreamingContent] = useState('');
   const [threadMessage, setThreadMessage] = useState<Message | null>(null);
+  const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
 
   // Pusher real-time subscription
   useEffect(() => {
@@ -64,11 +70,24 @@ export function ChannelView({ channel, initialMessages, usersMap, currentUser, m
       setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, content, metadata: { streaming: false } } : m));
     });
 
+    sub.bind('typing.update', ({ userId, name, typing }: { userId: string; name: string; typing: boolean }) => {
+      // Don't show typing indicator for the current user
+      if (userId === currentUser.id) return;
+      setTypingUsers((prev) => {
+        if (typing) {
+          if (prev.find((u) => u.userId === userId)) return prev;
+          return [...prev, { userId, name }];
+        } else {
+          return prev.filter((u) => u.userId !== userId);
+        }
+      });
+    });
+
     return () => {
       sub.unbind_all();
       pusher.unsubscribe(channelName);
     };
-  }, [channel.id, currentUser.orgId]);
+  }, [channel.id, currentUser.orgId, currentUser.id]);
 
   const handleSend = useCallback(async (content: string, parentMessageId?: string) => {
     await fetch(`/api/messaging/channels/${channel.id}/messages`, {
@@ -111,6 +130,8 @@ export function ChannelView({ channel, initialMessages, usersMap, currentUser, m
             onSend={handleSend}
             placeholder={`Message #${channel.name}`}
             orgUsers={Object.values(usersMap)}
+            channelId={channel.id}
+            typingUsers={typingUsers}
           />
         </div>
 

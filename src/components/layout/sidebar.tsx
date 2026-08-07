@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Hash, Lock, Megaphone, Plus, ChevronDown, ChevronRight } from 'lucide-react';
+import { Hash, Lock, Megaphone, Plus, ChevronDown, ChevronRight, Globe, ShieldCheck } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { PresenceDot } from '@/components/messaging/presence-dot';
 import { cn } from '@/lib/utils';
@@ -13,17 +13,21 @@ interface Props {
   dms: { userId: string; name: string; avatarUrl?: string | null; presence?: string }[];
   currentUser: User;
   onNewChannel?: () => void;
+  unreadCounts?: Record<string, number>;
 }
 
 const CHANNEL_ICONS = { public: Hash, private: Lock, announcement: Megaphone };
 
-export function Sidebar({ channels, dms, currentUser, onNewChannel }: Props) {
+export function Sidebar({ channels, dms, currentUser, onNewChannel, unreadCounts = {} }: Props) {
   const pathname = usePathname();
   const [channelsOpen, setChannelsOpen] = useState(true);
   const [dmsOpen, setDmsOpen] = useState(true);
 
   const publicChannels = channels.filter((c) => c.type === 'public');
   const privateChannels = channels.filter((c) => c.type === 'private');
+
+  const isAdmin =
+    currentUser.role === 'PLATFORM_ADMIN' || currentUser.role === 'ENTITY_ADMIN';
 
   return (
     <aside
@@ -52,11 +56,35 @@ export function Sidebar({ channels, dms, currentUser, onNewChannel }: Props) {
           onAdd={onNewChannel}
         >
           {publicChannels.map((c) => (
-            <ChannelLink key={c.id} channel={c} active={pathname === `/channels/${c.id}`} />
+            <ChannelLink
+              key={c.id}
+              channel={c}
+              active={pathname === `/channels/${c.id}`}
+              unread={unreadCounts[c.id] ?? 0}
+            />
           ))}
           {privateChannels.map((c) => (
-            <ChannelLink key={c.id} channel={c} active={pathname === `/channels/${c.id}`} />
+            <ChannelLink
+              key={c.id}
+              channel={c}
+              active={pathname === `/channels/${c.id}`}
+              unread={unreadCounts[c.id] ?? 0}
+            />
           ))}
+
+          {/* Browse channels link */}
+          <Link
+            href="/channels/browse"
+            className={cn(
+              'flex items-center gap-2 px-3 py-1.5 rounded-lg mx-1 text-sm transition-colors',
+              pathname === '/channels/browse'
+                ? 'bg-[var(--sidebar-active)] text-[var(--accent)] font-medium'
+                : 'text-[var(--text-muted)] hover:bg-[var(--panel-hover)] hover:text-[var(--text-secondary)]',
+            )}
+          >
+            <Globe className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">Browse channels</span>
+          </Link>
         </SidebarSection>
 
         {/* DMs section */}
@@ -86,6 +114,34 @@ export function Sidebar({ channels, dms, currentUser, onNewChannel }: Props) {
             </Link>
           ))}
         </SidebarSection>
+
+        {/* Admin section */}
+        {isAdmin && (
+          <div className="mb-1 mt-2">
+            <div className="flex items-center px-3 py-1">
+              <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Admin</span>
+            </div>
+            {[
+              { href: '/admin/users', label: 'Users', icon: ShieldCheck },
+              { href: '/admin/channels', label: 'Channels', icon: Hash },
+              { href: '/admin/usage', label: 'Claude Usage', icon: Hash },
+            ].map(({ href, label, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-1.5 rounded-lg mx-1 text-sm transition-colors',
+                  pathname.startsWith(href)
+                    ? 'bg-[var(--sidebar-active)] text-[var(--accent)] font-medium'
+                    : 'text-[var(--text-secondary)] hover:bg-[var(--panel-hover)]',
+                )}
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{label}</span>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Current user footer */}
@@ -128,8 +184,9 @@ function SidebarSection({ label, open, onToggle, onAdd, children }: {
   );
 }
 
-function ChannelLink({ channel, active }: { channel: Channel; active: boolean }) {
+function ChannelLink({ channel, active, unread }: { channel: Channel; active: boolean; unread: number }) {
   const Icon = CHANNEL_ICONS[channel.type as keyof typeof CHANNEL_ICONS] ?? Hash;
+  const hasUnread = unread > 0;
   return (
     <Link
       href={`/channels/${channel.id}`}
@@ -137,11 +194,21 @@ function ChannelLink({ channel, active }: { channel: Channel; active: boolean })
         'flex items-center gap-2 px-3 py-1.5 rounded-lg mx-1 text-sm transition-colors',
         active
           ? 'bg-[var(--sidebar-active)] text-[var(--accent)] font-medium'
+          : hasUnread
+          ? 'text-[var(--text-primary)] font-semibold hover:bg-[var(--panel-hover)]'
           : 'text-[var(--text-secondary)] hover:bg-[var(--panel-hover)]',
       )}
     >
       <Icon className="h-3.5 w-3.5 shrink-0" />
-      <span className="truncate">{channel.name}</span>
+      <span className="truncate flex-1">{channel.name}</span>
+      {hasUnread && !active && (
+        <span
+          className="shrink-0 rounded-full text-[10px] font-bold px-1.5 py-0.5 min-w-[18px] text-center leading-none"
+          style={{ background: 'var(--accent)', color: '#fff' }}
+        >
+          {unread > 99 ? '99+' : unread}
+        </span>
+      )}
     </Link>
   );
 }
