@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
       sgMail.setApiKey(apiKey);
       const magicLink = `https://chat.vb.co/api/auth/magic?secret=${process.env.BYPASS_SECRET}&email=${encodeURIComponent(email)}`;
       await sgMail.send({
-        from: 'ViBe <noreply@vb.co>',
+        from: { email: 'noreply@vb.co', name: 'ViBe' },
         to: email,
         subject: `You've been invited to ViBe Messaging`,
         html: `<p>Hi ${name},</p><p>You've been invited to join ViBe Messaging.</p><p><a href="${magicLink}" style="background:#2f5cff;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block">Accept Invite &amp; Sign In</a></p><p>Or copy this link: ${magicLink}</p>`,

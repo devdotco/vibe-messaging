@@ -1,7 +1,12 @@
 import sgMail from '@sendgrid/mail';
 import crypto from 'crypto';
 
-const FROM = process.env.EMAIL_FROM ?? 'ViBe Messaging <notifications@vb.co>';
+// SendGrid requires { email, name } object — not "Name <email>" string format
+function parseFrom(s: string): { email: string; name?: string } {
+  const m = s.match(/^(.+?)\s*<([^>]+)>$/);
+  return m ? { name: m[1].trim(), email: m[2].trim() } : { email: s.trim() };
+}
+const FROM = parseFrom(process.env.EMAIL_FROM ?? 'ViBe Messaging <notifications@vb.co>');
 const REPLY_DOMAIN = process.env.EMAIL_REPLY_DOMAIN ?? 'reply.vb.co';
 const REPLY_SECRET = process.env.EMAIL_REPLY_SECRET ?? 'dev-secret';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://chat.vb.co';
