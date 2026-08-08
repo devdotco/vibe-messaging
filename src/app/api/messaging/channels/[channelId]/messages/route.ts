@@ -140,15 +140,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cha
     })
     .returning();
 
-  // 7. If this is a reply, increment parent threadReplyCount
+  // 7. If this is a reply, increment parent threadReplyCount and broadcast
   if (body.parentMessageId) {
-    await db
+    const threadLastReplyAt = new Date();
+    const [updatedParent] = await db
       .update(messages)
       .set({
         threadReplyCount: sql`${messages.threadReplyCount} + 1`,
-        threadLastReplyAt: new Date(),
+        threadLastReplyAt,
       })
-      .where(eq(messages.id, body.parentMessageId));
+      .where(eq(messages.id, body.parentMessageId))
+      .returning({ threadReplyCount: messages.threadReplyCount });
+
+    pusherServer.trigger(`org-${user.orgId}-channel-${channelId}`, 'thread.reply', {
+      parentId: body.parentMessageId,
+      threadReplyCount: updatedParent?.threadReplyCount ?? 1,
+      threadLastReplyAt: threadLastReplyAt.toISOString(),
+    }).catch(() => {});
   }
 
   // 8. Broadcast to channel

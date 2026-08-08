@@ -180,18 +180,30 @@ export function MessageItem({ message, user, currentUserId, channelId, onReact, 
           </div>
         )}
 
-        {/* Thread count */}
-        {(message.threadReplyCount ?? 0) > 0 && (
+        {/* Thread replies — always visible when there are replies, or on hover */}
+        {(message.threadReplyCount ?? 0) > 0 ? (
           <button
             onClick={() => onReply(message)}
-            className="mt-1 text-xs text-[var(--accent)] hover:underline flex items-center gap-1"
+            className="mt-1.5 flex items-center gap-2 text-xs border border-[var(--border)] rounded-lg px-2.5 py-1 hover:bg-[var(--panel-hover)] hover:border-[var(--accent)] transition-colors group w-fit"
           >
-            ↩ {message.threadReplyCount} {message.threadReplyCount === 1 ? 'reply' : 'replies'}
+            <span className="text-[var(--accent)] font-medium">
+              ↩ {message.threadReplyCount} {message.threadReplyCount === 1 ? 'reply' : 'replies'}
+            </span>
             {message.threadLastReplyAt && (
-              <span className="text-[var(--text-muted)]">· Last reply {formatTime(message.threadLastReplyAt)}</span>
+              <span className="text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]">
+                Last reply {formatTime(message.threadLastReplyAt)}
+              </span>
             )}
+            <span className="text-[var(--text-muted)] group-hover:text-[var(--accent)] font-medium hidden group-hover:inline">View thread →</span>
           </button>
-        )}
+        ) : hovering ? (
+          <button
+            onClick={() => onReply(message)}
+            className="mt-0.5 flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors w-fit"
+          >
+            ↩ Reply in thread
+          </button>
+        ) : null}
 
         {/* Reactions */}
         {reactions.length > 0 && (

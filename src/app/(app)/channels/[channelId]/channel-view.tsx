@@ -50,10 +50,16 @@ export function ChannelView({ channel: initialChannel, initialMessages, usersMap
     const sub = pusher.subscribe(channelName);
 
     sub.bind('message.new', ({ message }: { message: MessageWithReactions }) => {
+      if (message.parentMessageId) return; // thread replies stay out of main list
       setMessages((prev) => {
         if (prev.find((m) => m.id === message.id)) return prev;
         return [...prev, message];
       });
+    });
+
+    // Update parent's reply count when a thread reply is posted
+    sub.bind('thread.reply', ({ parentId, threadReplyCount, threadLastReplyAt }: { parentId: string; threadReplyCount: number; threadLastReplyAt: string }) => {
+      setMessages((prev) => prev.map((m) => m.id === parentId ? { ...m, threadReplyCount, threadLastReplyAt: new Date(threadLastReplyAt) } : m));
     });
 
     sub.bind('message.updated', ({ messageId, content }: { messageId: string; content: string }) => {
