@@ -10,9 +10,12 @@ export async function POST(req: NextRequest) {
 
   // SendGrid Inbound Parse field names
   const from = form.get('from') as string ?? '';
-  const envelope = JSON.parse(form.get('envelope') as string ?? '{}');
+  const rawEnvelope = form.get('envelope') as string ?? '{}';
+  const envelope = JSON.parse(rawEnvelope);
   const to = (envelope.to?.[0] ?? form.get('to') as string ?? '').trim();
   const text = form.get('text') as string ?? '';
+
+  console.log('[inbound]', { from, to, textLen: text.length, envelope: rawEnvelope.slice(0, 100) });
 
   // Proxy task/project types to PM BEFORE any local verification —
   // messaging's TYPE_DECODE only knows c/d, so HMAC would fail on t/p.
