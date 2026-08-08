@@ -4,36 +4,39 @@ import { messages, channels, users, dmMessages, dmConversations } from '@/lib/db
 import { eq, and } from 'drizzle-orm';
 import { verifyReplyAddress, stripQuotedReply } from '@/lib/email/notifications';
 import { pusherServer } from '@/lib/pusher/server';
-import crypto from 'crypto';
-
-function verifyMailgunSignature(timestamp: string, token: string, signature: string): boolean {
-  const key = process.env.MAILGUN_WEBHOOK_KEY ?? '';
-  const expected = crypto.createHmac('sha256', key)
-    .update(timestamp + token)
-    .digest('hex');
-  return expected === signature;
-}
 
 export async function POST(req: NextRequest) {
   const form = await req.formData();
 
-  const timestamp = form.get('timestamp') as string ?? '';
-  const token = form.get('token') as string ?? '';
-  const signature = form.get('signature') as string ?? '';
+  // SendGrid Inbound Parse field names
+  const from = form.get('from') as string ?? '';
+  const envelope = JSON.parse(form.get('envelope') as string ?? '{}');
+  const to = (envelope.to?.[0] ?? form.get('to') as string ?? '').trim();
+  const text = form.get('text') as string ?? '';
 
-  if (process.env.MAILGUN_WEBHOOK_KEY && !verifyMailgunSignature(timestamp, token, signature)) {
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+  // Proxy task/project types to PM BEFORE any local verification —
+  // messaging's TYPE_DECODE only knows c/d, so HMAC would fail on t/p.
+  const typeCode = to.match(/reply\+([a-z])-/)?.[1];
+  if (typeCode === 't' || typeCode === 'p') {
+    await fetch('https://pm.vb.co/api/webhooks/email/inbound', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-internal-secret': process.env.EMAIL_REPLY_SECRET ?? '',
+      },
+      body: JSON.stringify({ from, to, text }),
+    }).catch(console.error);
+    return NextResponse.json({ ok: true });
   }
-
-  const from = form.get('sender') as string ?? form.get('from') as string ?? '';
-  const to = (form.get('recipient') as string ?? form.get('To') as string ?? '').split(',')[0]!.trim();
-  const text = form.get('body-plain') as string ?? '';
 
   const fromEmailMatch = from.match(/<([^>]+)>/) ?? from.match(/(\S+@\S+)/);
   const fromEmail = (fromEmailMatch ? fromEmailMatch[1] : from)!;
 
   const parsed = verifyReplyAddress(to, fromEmail);
-  if (!parsed) return NextResponse.json({ error: 'Invalid reply address' }, { status: 400 });
+  if (!parsed) {
+    console.error('[inbound] verifyReplyAddress failed', { to, fromEmail });
+    return NextResponse.json({ error: 'Invalid reply address' }, { status: 400 });
+  }
 
   const { type, entityId } = parsed;
   const replyText = stripQuotedReply(text);

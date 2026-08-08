@@ -1,8 +1,7 @@
-import { Resend } from 'resend';
+import sgMail from '@sendgrid/mail';
 import crypto from 'crypto';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM = process.env.EMAIL_FROM ?? 'ViBe Messaging <notifications@dev.co>';
+const FROM = process.env.EMAIL_FROM ?? 'ViBe Messaging <notifications@vb.co>';
 const REPLY_DOMAIN = process.env.EMAIL_REPLY_DOMAIN ?? 'reply.vb.co';
 const REPLY_SECRET = process.env.EMAIL_REPLY_SECRET ?? 'dev-secret';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://chat.vb.co';
@@ -40,10 +39,13 @@ export function verifyReplyAddress(toAddress: string, fromEmail: string): { type
 
 export function stripQuotedReply(text: string): string {
   const patterns = [
-    /\r?\nOn .{5,100} wrote:\r?\n/,
-    /\r?\n[-_]{3,} *Original Message *[-_]{3,}/i,
-    /\r?\nFrom: .+/,
-    /\r?\n>[ \t]/,
+    /\r?\n--[ \t]*\r?\n/,                          // RFC 3676 signature delimiter: -- on its own line
+    /\r?\nOn .{5,100} wrote:\r?\n/,                 // Gmail/Outlook quote header
+    /\r?\n[-_]{3,} *Original Message *[-_]{3,}/i,   // Outlook original message
+    /\r?\nFrom: .+/,                                // bare From: line
+    /\r?\n>[ \t]/,                                  // quoted text
+    /\r?\nSent from my /i,                          // mobile signature
+    /\r?\nGet Outlook for /i,                       // Outlook mobile
   ];
   let cutAt = text.length;
   for (const p of patterns) {
@@ -64,8 +66,10 @@ interface MentionNotificationData {
 }
 
 async function sendNotification(to: string, subject: string, html: string, replyTo: string) {
-  if (!process.env.RESEND_API_KEY) return;
-  await resend.emails.send({ from: FROM, to, subject, html, replyTo }).catch(console.error);
+  const apiKey = process.env.SENDGRID_API_KEY;
+  if (!apiKey) return;
+  sgMail.setApiKey(apiKey);
+  await sgMail.send({ from: FROM, to, subject, html, replyTo }).catch(console.error);
 }
 
 interface DmNotificationData {

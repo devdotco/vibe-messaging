@@ -3,9 +3,7 @@ import { db } from '@/lib/db';
 import { users, channels, channelMembers } from '@/lib/db/schema/messaging';
 import { getCurrentUser } from '@/lib/auth/session';
 import { eq, desc } from 'drizzle-orm';
-import { Resend } from 'resend';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import sgMail from '@sendgrid/mail';
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -68,13 +66,17 @@ export async function POST(req: NextRequest) {
 
   // Send invite email
   try {
-    const magicLink = `https://chat.vb.co/api/auth/magic?secret=${process.env.BYPASS_SECRET}&email=${encodeURIComponent(email)}`;
-    await resend.emails.send({
-      from: 'ViBe <noreply@dev.co>',
-      to: email,
-      subject: `You've been invited to ViBe Messaging`,
-      html: `<p>Hi ${name},</p><p>You've been invited to join ViBe Messaging.</p><p><a href="${magicLink}" style="background:#2f5cff;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block">Accept Invite &amp; Sign In</a></p><p>Or copy this link: ${magicLink}</p>`,
-    });
+    const apiKey = process.env.SENDGRID_API_KEY;
+    if (apiKey) {
+      sgMail.setApiKey(apiKey);
+      const magicLink = `https://chat.vb.co/api/auth/magic?secret=${process.env.BYPASS_SECRET}&email=${encodeURIComponent(email)}`;
+      await sgMail.send({
+        from: 'ViBe <noreply@vb.co>',
+        to: email,
+        subject: `You've been invited to ViBe Messaging`,
+        html: `<p>Hi ${name},</p><p>You've been invited to join ViBe Messaging.</p><p><a href="${magicLink}" style="background:#2f5cff;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block">Accept Invite &amp; Sign In</a></p><p>Or copy this link: ${magicLink}</p>`,
+      });
+    }
   } catch (err) {
     console.error('Failed to send invite email:', err);
     // Non-fatal — user was still created
