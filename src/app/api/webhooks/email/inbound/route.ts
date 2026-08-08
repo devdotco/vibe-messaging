@@ -8,18 +8,25 @@ import { pusherServer } from '@/lib/pusher/server';
 export async function POST(req: NextRequest) {
   const form = await req.formData();
 
-  // SendGrid Inbound Parse field names
   const from = form.get('from') as string ?? '';
+  // Support both SendGrid (envelope JSON + to) and Mailgun (recipient field)
   const rawEnvelope = form.get('envelope') as string ?? '{}';
   const envelope = JSON.parse(rawEnvelope);
-  const to = (envelope.to?.[0] ?? form.get('to') as string ?? '').trim();
-  const text = form.get('text') as string ?? '';
+  const to = (
+    envelope.to?.[0] ??
+    form.get('to') as string ??
+    form.get('recipient') as string ?? // Mailgun
+    ''
+  ).trim();
+  // Support both SendGrid (text) and Mailgun (stripped-text / body-plain)
+  const text = (
+    form.get('text') as string ||
+    form.get('stripped-text') as string ||
+    form.get('body-plain') as string ||
+    ''
+  );
 
-  // Log every field SendGrid sends so we can see exact field names
-  const allFields: Record<string, string> = {};
-  for (const [k, v] of form.entries()) allFields[k] = String(v).slice(0, 120);
-  console.log('[inbound] all fields:', JSON.stringify(allFields));
-  console.log('[inbound] parsed:', { from, to, textLen: text.length, envelope: rawEnvelope.slice(0, 120) });
+  console.log('[inbound]', { from, to: to.slice(0, 60), textLen: text.length });
 
   // Proxy task/project types to PM BEFORE any local verification —
   // messaging's TYPE_DECODE only knows c/d, so HMAC would fail on t/p.
