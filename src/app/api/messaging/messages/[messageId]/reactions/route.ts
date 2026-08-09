@@ -3,7 +3,12 @@ import { db } from '@/lib/db';
 import { messageReactions, messages } from '@/lib/db/schema/messaging';
 import { requireUser } from '@/lib/auth/session';
 import { pusherServer } from '@/lib/pusher/server';
+import { validate, z } from '@/lib/validate';
 import { eq, and } from 'drizzle-orm';
+
+const ReactionSchema = z.object({
+  emoji: z.string().min(1).max(10),
+});
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ messageId: string }> }) {
   const user = await requireUser();
@@ -27,7 +32,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ mes
 export async function POST(req: NextRequest, { params }: { params: Promise<{ messageId: string }> }) {
   const user = await requireUser();
   const { messageId } = await params;
-  const { emoji } = await req.json();
+  const parsed = validate(ReactionSchema, await req.json());
+  if (!parsed.success) return parsed.response;
+  const { emoji } = parsed.data;
 
   await db.insert(messageReactions)
     .values({ messageId, orgId: user.orgId, userId: user.id, emoji })

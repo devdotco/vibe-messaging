@@ -7,8 +7,9 @@ export function proxy(req: NextRequest) {
   if (isPublic) return NextResponse.next();
   const token = req.cookies.get('__vibe_session')?.value;
   if (!token) {
+    const signInUrl = process.env.AUTH_URL ?? 'https://app.vb.co';
     return NextResponse.redirect(
-      new URL(`/sign-in?next=${encodeURIComponent(req.nextUrl.pathname)}`, req.url)
+      new URL(`/sign-in?next=${encodeURIComponent(req.url)}`, signInUrl)
     );
   }
   return NextResponse.next();

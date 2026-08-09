@@ -121,7 +121,7 @@ export async function queryWarehouseForContext(
     try {
       const { rows } = await warehousePool.query(
         `SELECT title, status, priority, due_date, assignee_id
-         FROM app_dev_co.tasks
+         FROM vibe_pm.tasks
          WHERE org_id = $1
            AND status NOT IN ('completed', 'cancelled')
            AND (due_date IS NULL OR due_date > NOW() - INTERVAL '7 days')

@@ -2,7 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { channels, channelMembers } from '@/lib/db/schema/messaging';
 import { requireUser } from '@/lib/auth/session';
+import { validate, z } from '@/lib/validate';
 import { eq, and } from 'drizzle-orm';
+
+const ChannelSchema = z.object({
+  name: z.string().min(1).max(80).regex(/^[a-z0-9-_]+$/, 'Lowercase letters, numbers, hyphens only'),
+  description: z.string().max(500).optional(),
+  type: z.enum(['public', 'private', 'announcement']).default('public'),
+  claudeEnabled: z.boolean().optional(),
+});
 
 export async function GET() {
   const user = await requireUser();
@@ -24,7 +32,9 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const user = await requireUser();
-  const body = await req.json();
+  const parsed = validate(ChannelSchema, await req.json());
+  if (!parsed.success) return parsed.response;
+  const body = parsed.data;
 
   const [channel] = await db
     .insert(channels)
@@ -32,7 +42,7 @@ export async function POST(req: NextRequest) {
       orgId: user.orgId,
       name: body.name,
       description: body.description,
-      type: body.type ?? 'public',
+      type: body.type,
       claudeEnabled: body.claudeEnabled ?? true,
       createdBy: user.id,
     })

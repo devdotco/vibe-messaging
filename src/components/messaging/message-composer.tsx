@@ -2,6 +2,7 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Send, Paperclip, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SlashCommandMenu, type SlashCommand } from './SlashCommandMenu';
 import { cn } from '@/lib/utils';
 import type { User } from '@/lib/db/schema/messaging';
 
@@ -13,6 +14,7 @@ interface AttachmentPreview {
 
 interface Props {
   onSend: (content: string, parentMessageId?: string) => Promise<void>;
+  onSlashCommand?: (command: SlashCommand, arg: string) => void;
   placeholder?: string;
   orgUsers?: User[];
   parentMessageId?: string;
@@ -23,6 +25,7 @@ interface Props {
 
 export function MessageComposer({
   onSend,
+  onSlashCommand,
   placeholder = 'Message...',
   orgUsers = [],
   parentMessageId,
@@ -34,6 +37,8 @@ export function MessageComposer({
   const [sending, setSending] = useState(false);
   const [showMentions, setShowMentions] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
+  const [showSlash, setShowSlash] = useState(false);
+  const [slashQuery, setSlashQuery] = useState('');
   const [attachments, setAttachments] = useState<AttachmentPreview[]>([]);
   const [uploading, setUploading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -42,8 +47,15 @@ export function MessageComposer({
   const isTypingRef = useRef(false);
 
   const claudeSuggestion = { id: 'claude', name: 'Claude', role: 'AI' };
+  const hereSuggestion = { id: '@here', name: 'here', role: 'Notify everyone currently online' };
+  const channelSuggestion = { id: '@channel', name: 'channel', role: 'Notify everyone in this channel' };
+
+  const broadcastCandidates = [hereSuggestion, channelSuggestion].filter(
+    (s) => s.name.startsWith(mentionQuery.toLowerCase()),
+  );
 
   const mentionCandidates = [
+    ...broadcastCandidates,
     claudeSuggestion,
     ...orgUsers.filter((u) => u.name.toLowerCase().includes(mentionQuery.toLowerCase())),
   ];
@@ -69,11 +81,17 @@ export function MessageComposer({
   }, [channelId]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    // Let the slash menu handle arrows/enter/escape when open
+    if (showSlash) return;
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
-    if (e.key === 'Escape') setShowMentions(false);
+    if (e.key === 'Escape') {
+      setShowMentions(false);
+      setShowSlash(false);
+      setContent('');
+    }
   }
 
   function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
@@ -93,11 +111,20 @@ export function MessageComposer({
       }, 3000);
     }
 
+    // Detect slash command: only when content is exactly "/..." with nothing before it
+    if (val.startsWith('/') && !val.includes(' ')) {
+      setSlashQuery(val.slice(1));
+      setShowSlash(true);
+      setShowMentions(false);
+    } else {
+      setShowSlash(false);
+    }
+
     // Detect @mention
     const cursor = e.target.selectionStart;
     const textBeforeCursor = val.slice(0, cursor);
     const atMatch = textBeforeCursor.match(/@(\w*)$/);
-    if (atMatch) {
+    if (atMatch && !val.startsWith('/')) {
       setMentionQuery(atMatch[1]);
       setShowMentions(true);
     } else {
@@ -110,6 +137,21 @@ export function MessageComposer({
       ta.style.height = 'auto';
       ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
     }
+  }
+
+  function handleSlashSelect(cmd: SlashCommand) {
+    setShowSlash(false);
+    setContent('');
+    if (onSlashCommand) {
+      // The arg is whatever was typed after /cmdname
+      const arg = slashQuery.slice(cmd.name.length).trim();
+      onSlashCommand(cmd, arg);
+    } else if (cmd.name === 'here') {
+      setContent('@here ');
+    } else if (cmd.name === 'channel') {
+      setContent('@channel ');
+    }
+    textareaRef.current?.focus();
   }
 
   function insertMention(name: string) {
@@ -176,27 +218,46 @@ export function MessageComposer({
         <div className="pb-1 text-xs text-[var(--text-muted)] italic">{typingText}</div>
       )}
 
+      {/* Slash command menu */}
+      {showSlash && (
+        <SlashCommandMenu
+          query={slashQuery}
+          onSelect={handleSlashSelect}
+          onClose={() => { setShowSlash(false); setContent(''); }}
+        />
+      )}
+
       {/* Mention dropdown */}
       {showMentions && mentionCandidates.length > 0 && (
         <div className="absolute bottom-full left-3 mb-1 w-56 bg-[var(--panel)] border border-[var(--border)] rounded-lg shadow-lg overflow-hidden z-20">
-          {mentionCandidates.slice(0, 8).map((u) => (
-            <button
-              key={u.id}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-[var(--panel-hover)] text-left"
-              onMouseDown={(e) => { e.preventDefault(); insertMention(u.name); }}
-            >
-              {u.id === 'claude' ? (
-                <span className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                  style={{ background: 'linear-gradient(135deg, #6d4be0, #9370f8)' }}>C</span>
-              ) : (
-                <span className="w-6 h-6 rounded-full bg-[var(--accent-subtle)] text-[var(--accent)] flex items-center justify-center text-xs font-bold">
-                  {u.name[0]?.toUpperCase()}
+          {mentionCandidates.slice(0, 8).map((u) => {
+            const isBroadcast = u.id === '@here' || u.id === '@channel';
+            return (
+              <button
+                key={u.id}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-[var(--panel-hover)] text-left"
+                onMouseDown={(e) => { e.preventDefault(); insertMention(u.name); }}
+              >
+                {isBroadcast ? (
+                  <span className="w-6 h-6 rounded-full bg-[var(--accent-subtle)] text-[var(--accent)] flex items-center justify-center text-base">
+                    📣
+                  </span>
+                ) : u.id === 'claude' ? (
+                  <span className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                    style={{ background: 'linear-gradient(135deg, #6d4be0, #9370f8)' }}>C</span>
+                ) : (
+                  <span className="w-6 h-6 rounded-full bg-[var(--accent-subtle)] text-[var(--accent)] flex items-center justify-center text-xs font-bold">
+                    {u.name[0]?.toUpperCase()}
+                  </span>
+                )}
+                <span className={`text-[var(--text-primary)] ${isBroadcast ? 'font-semibold' : ''}`}>
+                  @{u.name}
                 </span>
-              )}
-              <span className="text-[var(--text-primary)]">{u.name}</span>
-              {u.id === 'claude' && <span className="text-[10px] text-[var(--ai)] ml-auto font-semibold">AI</span>}
-            </button>
-          ))}
+                {isBroadcast && <span className="text-[10px] text-[var(--text-muted)] ml-auto truncate max-w-[100px]">{u.role}</span>}
+                {u.id === 'claude' && <span className="text-[10px] text-[var(--ai)] ml-auto font-semibold">AI</span>}
+              </button>
+            );
+          })}
         </div>
       )}
 

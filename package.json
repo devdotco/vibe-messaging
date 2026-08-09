@@ -42,7 +42,8 @@
     "react-markdown": "^10.1.0",
     "resend": "^6.18.1",
     "tailwind-merge": "^3.6.0",
-    "uploadthing": "^7.7.4"
+    "uploadthing": "^7.7.4",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -17,7 +17,7 @@ export default function SignInPage() {
         <h1 className="text-lg font-bold text-[var(--text-primary)] mb-1">ViBe Messaging</h1>
         <p className="text-sm text-[var(--text-muted)] mb-6">Sign in via the main ViBe app to access messaging.</p>
         <a
-          href={`${process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.vb.co'}/sign-in`}
+          href={`${process.env.NEXT_PUBLIC_AUTH_URL ?? 'https://app.vb.co'}/sign-in`}
           className="inline-flex items-center justify-center w-full h-9 rounded-lg text-sm font-medium text-white transition-colors"
           style={{ background: 'var(--accent)' }}
         >

@@ -9,6 +9,8 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
 const CLAUDE_BOT_USER_ID = process.env.CLAUDE_BOT_USER_ID!;
 const MODEL = 'claude-sonnet-4-5';
+const PM_MODULE_URL = process.env.PM_MODULE_URL ?? 'https://pm.vb.co';
+const INTER_SERVICE_SECRET = process.env.INTER_SERVICE_SECRET!;
 
 export interface ClaudeContext {
   orgId: string;
@@ -20,6 +22,145 @@ export interface ClaudeContext {
   parentMessageId?: string;
   triggeringMessage: string;
   recentMessages: { role: 'user' | 'assistant'; content: string; userName: string }[];
+}
+
+const PM_TOOLS: Anthropic.Tool[] = [
+  {
+    name: 'create_task',
+    description: 'Create a task in ViBe project management. Use when the user asks to create, log, or track something as a task.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        title: { type: 'string', description: 'Task title' },
+        projectId: { type: 'string', description: 'Project ID. Ask the user which project if not specified.' },
+        assigneeId: { type: 'string', description: 'User ID of person to assign to. Optional.' },
+        dueDate: { type: 'string', description: 'Due date in YYYY-MM-DD format. Optional.' },
+        priority: {
+          type: 'string',
+          enum: ['none', 'low', 'medium', 'high', 'urgent'],
+          description: 'Task priority. Default to medium if not specified.',
+        },
+        description: { type: 'string', description: 'Additional context. Optional.' },
+      },
+      required: ['title', 'projectId'],
+    },
+  },
+  {
+    name: 'complete_task',
+    description: 'Mark a task as completed.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        taskId: { type: 'string', description: 'ID of the task to complete' },
+      },
+      required: ['taskId'],
+    },
+  },
+  {
+    name: 'list_tasks',
+    description: 'List tasks from a project or assigned to a specific user.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        projectId: { type: 'string', description: 'Filter by project. Optional.' },
+        assigneeId: { type: 'string', description: 'Filter by assignee user ID. Optional.' },
+        status: {
+          type: 'string',
+          enum: ['not_started', 'in_progress', 'completed', 'blocked'],
+        },
+        limit: { type: 'number', description: 'Max results. Default 20.' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_project_status',
+    description: 'Get a summary of a project including task counts, completion rate, and overdue tasks.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        projectId: { type: 'string' },
+      },
+      required: ['projectId'],
+    },
+  },
+];
+
+function getToolsForUser(allowedDomains: string[]): Anthropic.Tool[] {
+  if (allowedDomains.includes('projects.tasks')) return PM_TOOLS;
+  return [];
+}
+
+async function executeTool(
+  toolName: string,
+  toolInput: Record<string, unknown>,
+  orgId: string,
+  userId: string,
+): Promise<string> {
+  const headers = {
+    'Authorization': `Bearer ${INTER_SERVICE_SECRET}`,
+    'Content-Type': 'application/json',
+  };
+
+  try {
+    switch (toolName) {
+      case 'create_task': {
+        const res = await fetch(`${PM_MODULE_URL}/api/pm/public/tasks`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ ...toolInput, orgId, createdByUserId: userId }),
+        });
+        const data = await res.json();
+        if (!data.success) return `Error creating task: ${data.error}`;
+        return JSON.stringify({
+          success: true,
+          taskId: data.task.id,
+          taskTitle: data.task.title,
+          message: 'Task created successfully',
+        });
+      }
+
+      case 'complete_task': {
+        const res = await fetch(
+          `${PM_MODULE_URL}/api/pm/public/tasks/${toolInput.taskId}/complete`,
+          {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ orgId, completedByUserId: userId }),
+          },
+        );
+        const data = await res.json();
+        if (!data.success) return `Error completing task: ${data.error}`;
+        return JSON.stringify({ success: true, taskTitle: data.task.title });
+      }
+
+      case 'list_tasks': {
+        const params = new URLSearchParams({ orgId });
+        if (toolInput.projectId) params.set('projectId', String(toolInput.projectId));
+        if (toolInput.assigneeId) params.set('assigneeId', String(toolInput.assigneeId));
+        if (toolInput.status) params.set('status', String(toolInput.status));
+        if (toolInput.limit) params.set('limit', String(toolInput.limit));
+        const res = await fetch(`${PM_MODULE_URL}/api/pm/public/tasks?${params}`, { headers });
+        const data = await res.json();
+        return JSON.stringify(data.tasks ?? []);
+      }
+
+      case 'get_project_status': {
+        const res = await fetch(
+          `${PM_MODULE_URL}/api/pm/projects/${toolInput.projectId}/stats`,
+          { headers },
+        );
+        const data = await res.json();
+        return JSON.stringify(data);
+      }
+
+      default:
+        return 'Unknown tool';
+    }
+  } catch (err) {
+    console.error('Tool execution error:', err);
+    return `Tool execution failed: ${err instanceof Error ? err.message : 'unknown error'}`;
+  }
 }
 
 export async function runClaudePipeline(ctx: ClaudeContext): Promise<void> {
@@ -68,16 +209,24 @@ export async function runClaudePipeline(ctx: ClaudeContext): Promise<void> {
   let outputTokens = 0;
 
   try {
+    const tools = getToolsForUser(allowedDomains);
+    let streamingContent = '';
+
+    // First API call
     const stream = anthropic.messages.stream({
       model: MODEL,
       max_tokens: 4096,
       system: systemPrompt,
+      tools: tools.length > 0 ? tools : undefined,
       messages: claudeMessages,
     });
 
     for await (const chunk of stream) {
-      if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-        fullContent += chunk.delta.text;
+      if (
+        chunk.type === 'content_block_delta' &&
+        chunk.delta.type === 'text_delta'
+      ) {
+        streamingContent += chunk.delta.text;
         await pusherServer.trigger(pusherChannel, 'claude.chunk', {
           messageId: placeholder.id,
           chunk: chunk.delta.text,
@@ -85,9 +234,69 @@ export async function runClaudePipeline(ctx: ClaudeContext): Promise<void> {
       }
     }
 
-    const finalMessage = await stream.finalMessage();
-    inputTokens = finalMessage.usage.input_tokens;
-    outputTokens = finalMessage.usage.output_tokens;
+    const firstMessage = await stream.finalMessage();
+    inputTokens += firstMessage.usage.input_tokens;
+    outputTokens += firstMessage.usage.output_tokens;
+
+    if (firstMessage.stop_reason === 'tool_use' && tools.length > 0) {
+      const toolUseBlocks = firstMessage.content.filter((b) => b.type === 'tool_use');
+
+      await pusherServer.trigger(pusherChannel, 'claude.tool_use', {
+        messageId: placeholder.id,
+        tools: toolUseBlocks.map((b) => b.type === 'tool_use' ? b.name : ''),
+      });
+
+      const toolResults = await Promise.all(
+        toolUseBlocks.map(async (block) => {
+          if (block.type !== 'tool_use') return null;
+          const result = await executeTool(
+            block.name,
+            block.input as Record<string, unknown>,
+            ctx.orgId,
+            ctx.userId,
+          );
+          return {
+            type: 'tool_result' as const,
+            tool_use_id: block.id,
+            content: result,
+          };
+        }),
+      );
+
+      const continueStream = anthropic.messages.stream({
+        model: MODEL,
+        max_tokens: 2048,
+        system: systemPrompt,
+        tools,
+        messages: [
+          ...claudeMessages,
+          { role: 'assistant' as const, content: firstMessage.content },
+          {
+            role: 'user' as const,
+            content: toolResults.filter(Boolean) as Anthropic.ToolResultBlockParam[],
+          },
+        ],
+      });
+
+      for await (const chunk of continueStream) {
+        if (
+          chunk.type === 'content_block_delta' &&
+          chunk.delta.type === 'text_delta'
+        ) {
+          fullContent += chunk.delta.text;
+          await pusherServer.trigger(pusherChannel, 'claude.chunk', {
+            messageId: placeholder.id,
+            chunk: chunk.delta.text,
+          });
+        }
+      }
+
+      const secondMessage = await continueStream.finalMessage();
+      inputTokens += secondMessage.usage.input_tokens;
+      outputTokens += secondMessage.usage.output_tokens;
+    } else {
+      fullContent = streamingContent;
+    }
   } catch (err) {
     fullContent = 'I encountered an error processing your request. Please try again.';
     console.error('Claude pipeline error:', err);
@@ -156,7 +365,7 @@ YOUR CAPABILITIES:
 - Answer questions about organization data within your permitted domains
 - Help with project management: summarize tasks, identify blockers, suggest priorities
 - Analyze trends in the data you can see
-- Create action items (say "Want me to create a task for this?" to offer)
+- Create tasks, complete tasks, and list tasks using the available tools (when permitted)
 - Provide strategic insights based on permitted financial/ops data
 
 RESPONSE STYLE:

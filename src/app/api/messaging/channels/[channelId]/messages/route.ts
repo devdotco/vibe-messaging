@@ -8,8 +8,17 @@ import { pusherServer } from '@/lib/pusher/server';
 import { parseMentions } from '@/lib/claude/mention-parser';
 import { runClaudePipeline } from '@/lib/claude/pipeline';
 import { sendMentionEmail } from '@/lib/email/notifications';
+import { rateLimit } from '@/lib/rate-limit';
+import { validate, z } from '@/lib/validate';
 import { eq, and, isNull, lt, desc, sql, inArray } from 'drizzle-orm';
 import { micromark } from 'micromark';
+
+const MessageSchema = z.object({
+  content: z.string().min(1).max(40_000),
+  parentMessageId: z.string().uuid().optional(),
+  forwardedFromMessageId: z.string().uuid().optional(),
+  forwardedFromChannelId: z.string().uuid().optional(),
+});
 
 export type ReactionGroup = { emoji: string; count: number; userIds: string[] };
 export type MessageWithReactions = typeof messages.$inferSelect & { reactions: ReactionGroup[] };
@@ -88,7 +97,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ chan
 export async function POST(req: NextRequest, { params }: { params: Promise<{ channelId: string }> }) {
   const user = await requireUser();
   const { channelId } = await params;
-  const body = await req.json();
+
+  if (!rateLimit(`msg:${user.id}`, 30, 60_000)) {
+    return NextResponse.json({ error: 'Too many messages. Slow down.' }, { status: 429 });
+  }
+
+  const parsed_body = validate(MessageSchema, await req.json());
+  if (!parsed_body.success) return parsed_body.response;
+  const body = parsed_body.data;
 
   // 1. Verify channel membership
   const [membership] = await db
@@ -122,6 +138,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cha
 
   const parsed = parseMentions(body.content, userMap);
 
+  if (parsed.hasClaude && !rateLimit(`claude:${user.id}`, 10, 3_600_000)) {
+    return NextResponse.json(
+      { error: 'Claude usage limit reached. Try again in an hour.' },
+      { status: 429 },
+    );
+  }
+
   // 5. Generate contentHtml from markdown
   const contentHtml = micromark(body.content);
 
@@ -136,7 +159,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cha
       contentHtml,
       parentMessageId: body.parentMessageId ?? null,
       hasClaudeMention: parsed.hasClaude,
+      hasHereMention: parsed.hasHere,
+      hasChannelMention: parsed.hasChannel,
       mentions: parsed.mentionedUserIds,
+      forwardedFromMessageId: body.forwardedFromMessageId ?? null,
+      forwardedFromChannelId: body.forwardedFromChannelId ?? null,
     })
     .returning();
 
@@ -196,7 +223,55 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cha
     }
   }
 
-  // 10. Fire Claude pipeline without awaiting (non-blocking)
+  // 10. @here — notify online channel members
+  if (parsed.hasHere) {
+    const onlineMembers = await db
+      .select({ userId: channelMembers.userId })
+      .from(channelMembers)
+      .where(eq(channelMembers.channelId, channelId));
+    for (const { userId: memberId } of onlineMembers) {
+      if (memberId === user.id) continue;
+      await db.insert(notifications).values({
+        userId: memberId,
+        orgId: user.orgId,
+        type: 'here_mention',
+        channelId,
+        messageId: message.id,
+        triggeredByUserId: user.id,
+      }).onConflictDoNothing();
+      pusherServer.trigger(
+        `org-${user.orgId}-user-${memberId}`,
+        'notification.new',
+        { type: 'here_mention', channelId, messageId: message.id },
+      ).catch(() => {});
+    }
+  }
+
+  // @channel — notify all channel members
+  if (parsed.hasChannel) {
+    const allMembers = await db
+      .select({ userId: channelMembers.userId })
+      .from(channelMembers)
+      .where(eq(channelMembers.channelId, channelId));
+    for (const { userId: memberId } of allMembers) {
+      if (memberId === user.id) continue;
+      await db.insert(notifications).values({
+        userId: memberId,
+        orgId: user.orgId,
+        type: 'channel_mention',
+        channelId,
+        messageId: message.id,
+        triggeredByUserId: user.id,
+      }).onConflictDoNothing();
+      pusherServer.trigger(
+        `org-${user.orgId}-user-${memberId}`,
+        'notification.new',
+        { type: 'channel_mention', channelId, messageId: message.id },
+      ).catch(() => {});
+    }
+  }
+
+  // 11. Fire Claude pipeline without awaiting (non-blocking)
   if (parsed.hasClaude && channel.claudeEnabled) {
     const recentRows = await db
       .select()

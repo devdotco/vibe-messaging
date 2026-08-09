@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
+import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { channelProjectLinks, messages } from '@/lib/db/schema/messaging';
 import { pusherServer } from '@/lib/pusher/server';
@@ -11,8 +12,28 @@ const EVENT_TEMPLATES: Record<string, (data: Record<string, string>) => string> 
   'milestone.reached': (d) => `🎯 Milestone reached: **${d.milestoneName}**`,
 };
 
-export async function POST(req: NextRequest) {
-  const body = await req.json();
+function verifySignature(signature: string | null, body: string): boolean {
+  if (!signature) return false;
+  const expected = 'sha256=' + crypto
+    .createHmac('sha256', process.env.INTER_SERVICE_SECRET!)
+    .update(body)
+    .digest('hex');
+  try {
+    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  } catch {
+    return false;
+  }
+}
+
+export async function POST(req: Request) {
+  const rawBody = await req.text();
+  const signature = req.headers.get('x-vibe-signature');
+
+  if (!verifySignature(signature, rawBody)) {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+  }
+
+  const body = JSON.parse(rawBody);
   const { orgId, projectId, eventType, data } = body;
 
   const template = EVENT_TEMPLATES[eventType];

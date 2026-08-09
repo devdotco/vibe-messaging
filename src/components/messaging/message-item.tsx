@@ -22,13 +22,14 @@ interface Props {
   onDelete?: (messageId: string) => void;
   onCreateTask?: (message: MessageWithReactions) => void;
   onPinToggle?: (messageId: string, isPinned: boolean) => void;
+  onForward?: (message: MessageWithReactions) => void;
   isStreaming?: boolean;
   streamContent?: string;
 }
 
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '🚀', '👀'];
 
-export function MessageItem({ message, user, currentUserId, channelId, onReact, onReply, onEdit, onDelete, onCreateTask, onPinToggle, isStreaming, streamContent }: Props) {
+export function MessageItem({ message, user, currentUserId, channelId, onReact, onReply, onEdit, onDelete, onCreateTask, onPinToggle, onForward, isStreaming, streamContent }: Props) {
   const [hovering, setHovering] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
@@ -36,8 +37,17 @@ export function MessageItem({ message, user, currentUserId, channelId, onReact, 
   const [pinning, setPinning] = useState(false);
 
   const isAI = message.isAiResponse;
+  const isSystem = (message.metadata as Record<string, unknown> | null)?.type === 'system';
   const content = isStreaming ? (streamContent ?? '...') : message.content;
   const isPinned = message.isPinned ?? false;
+
+  if (isSystem) {
+    return (
+      <div className="flex items-center justify-center py-1 px-4">
+        <span className="text-xs text-[var(--text-muted)] italic">{message.content}</span>
+      </div>
+    );
+  }
 
   async function handleSaveEdit() {
     if (!editContent.trim() || saving) return;
@@ -122,6 +132,15 @@ export function MessageItem({ message, user, currentUserId, channelId, onReact, 
           {isPinned && <span className="text-xs" title="Pinned message">📌</span>}
         </div>
 
+        {/* Forwarded indicator */}
+        {message.forwardedFromChannelId && (
+          <div className="mb-1 pl-3 border-l-[3px] border-[var(--border-strong)] bg-[var(--panel-hover)] rounded-r-md py-1 pr-2">
+            <span className="text-[10px] text-[var(--text-muted)] font-medium uppercase tracking-wide">
+              Forwarded
+            </span>
+          </div>
+        )}
+
         {/* Content — inline edit mode */}
         {isEditing ? (
           <div className="mt-1">
@@ -155,7 +174,14 @@ export function MessageItem({ message, user, currentUserId, channelId, onReact, 
         ) : isAI ? (
           <div className="prose prose-sm max-w-none text-[var(--text-primary)] [&_p]:my-1 [&_pre]:bg-[var(--panel-hover)] [&_pre]:p-2 [&_pre]:rounded [&_code]:text-xs">
             {isStreaming && !streamContent ? (
-              <StreamingDots />
+              <div className="space-y-1">
+                <StreamingDots />
+                {typeof (message.metadata as Record<string, unknown> | null)?.toolUseLabel === 'string' && (
+                  <p className="text-xs text-[var(--text-muted)] italic">
+                    {(message.metadata as Record<string, string>).toolUseLabel}
+                  </p>
+                )}
+              </div>
             ) : (
               <ReactMarkdown>{content}</ReactMarkdown>
             )}
@@ -255,6 +281,9 @@ export function MessageItem({ message, user, currentUserId, channelId, onReact, 
             >
               📌
             </button>
+          )}
+          {onForward && (
+            <button onClick={() => onForward(message)} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] px-1" title="Forward to...">↗ Fwd</button>
           )}
           {onCreateTask && (
             <button onClick={() => onCreateTask(message)} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] px-1">Task</button>

@@ -1,5 +1,7 @@
 export interface ParsedMention {
   hasClaude: boolean;
+  hasHere: boolean;
+  hasChannel: boolean;
   mentionedUserIds: string[];
 }
 
@@ -10,6 +12,8 @@ export function parseMentions(
   userMap: Record<string, string>,
 ): ParsedMention {
   const hasClaude = CLAUDE_MENTIONS.some((m) => content.includes(m));
+  const hasHere = content.includes('@here');
+  const hasChannel = content.includes('@channel') || content.includes('@everyone');
   const mentionedUserIds: string[] = [];
 
   // Strip markdown bold/italic wrappers around @mentions (e.g. **@Nate Tester**)
@@ -20,6 +24,8 @@ export function parseMentions(
   let match;
   while ((match = mentionRegex.exec(normalized)) !== null) {
     const raw = match[1];
+    const tag = raw.toLowerCase();
+    if (['claude', 'here', 'channel', 'everyone'].includes(tag)) continue;
     if (CLAUDE_MENTIONS.includes(`@${raw}`)) continue;
     // Collapse spaces so "Nate Tester" → "natetester" matches the userMap key
     const key = raw.toLowerCase().replace(/\s+/g, '');
@@ -27,5 +33,5 @@ export function parseMentions(
     if (userId && !mentionedUserIds.includes(userId)) mentionedUserIds.push(userId);
   }
 
-  return { hasClaude, mentionedUserIds };
+  return { hasClaude, hasHere, hasChannel, mentionedUserIds };
 }

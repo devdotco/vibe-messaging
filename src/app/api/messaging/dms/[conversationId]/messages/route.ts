@@ -6,7 +6,14 @@ import { pusherServer } from '@/lib/pusher/server';
 import { parseMentions } from '@/lib/claude/mention-parser';
 import { runClaudePipeline } from '@/lib/claude/pipeline';
 import { sendMentionEmail, sendDmEmail } from '@/lib/email/notifications';
+import { rateLimit } from '@/lib/rate-limit';
+import { validate, z } from '@/lib/validate';
 import { eq, and, isNull, asc, sql } from 'drizzle-orm';
+
+const DmMessageSchema = z.object({
+  content: z.string().min(1).max(40_000),
+  parentMessageId: z.string().uuid().optional(),
+});
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ conversationId: string }> }) {
   const user = await requireUser();
@@ -27,7 +34,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ con
 export async function POST(req: NextRequest, { params }: { params: Promise<{ conversationId: string }> }) {
   const user = await requireUser();
   const { conversationId } = await params;
-  const body = await req.json();
+
+  if (!rateLimit(`dm:${user.id}`, 30, 60_000)) {
+    return NextResponse.json({ error: 'Too many messages. Slow down.' }, { status: 429 });
+  }
+
+  const parsed_body = validate(DmMessageSchema, await req.json());
+  if (!parsed_body.success) return parsed_body.response;
+  const body = parsed_body.data;
 
   const [convo] = await db.select().from(dmConversations)
     .where(and(eq(dmConversations.id, conversationId), sql`${user.id} = ANY(${dmConversations.participantIds})`));

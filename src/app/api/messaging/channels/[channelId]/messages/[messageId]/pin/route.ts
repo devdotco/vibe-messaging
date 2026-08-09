@@ -3,8 +3,7 @@ import { db } from '@/lib/db';
 import { messages, channelMembers } from '@/lib/db/schema/messaging';
 import { requireUser } from '@/lib/auth/session';
 import { pusherServer } from '@/lib/pusher/server';
-import { eq, and } from 'drizzle-orm';
-import { sql } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 
 async function checkPinPermission(channelId: string, userId: string, userRole: string) {
   const isGlobalAdmin = userRole === 'PLATFORM_ADMIN' || userRole === 'ENTITY_ADMIN';
@@ -40,6 +39,21 @@ export async function POST(
     `org-${user.orgId}-channel-${channelId}`,
     'message.pinned',
     { messageId },
+  );
+
+  // System message: "{User} pinned a message."
+  const [sysMsg] = await db.insert(messages).values({
+    channelId,
+    orgId: user.orgId,
+    userId: '00000000-0000-0000-0000-000000000001',
+    content: `${user.name} pinned a message.`,
+    metadata: { type: 'system', action: 'pin' },
+  }).returning();
+
+  await pusherServer.trigger(
+    `org-${user.orgId}-channel-${channelId}`,
+    'message.new',
+    { message: sysMsg },
   );
 
   return NextResponse.json({ ok: true });

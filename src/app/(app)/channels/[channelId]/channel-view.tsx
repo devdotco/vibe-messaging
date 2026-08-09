@@ -118,6 +118,8 @@ export function ChannelView({ channel: initialChannel, initialMessages, usersMap
           contentHtml: null, aiTokensUsed: null, aiCostUsd: null,
           parentMessageId: null, threadReplyCount: 0, threadLastReplyAt: null,
           mentions: null, hasClaudeMention: false,
+          hasHereMention: false, hasChannelMention: false,
+          forwardedFromMessageId: null, forwardedFromChannelId: null,
           isPinned: false, pinnedAt: null, pinnedBy: null,
           editedAt: null, deletedAt: null, metadata: null, source: 'app',
         } as MessageWithReactions];
@@ -126,6 +128,19 @@ export function ChannelView({ channel: initialChannel, initialMessages, usersMap
 
     sub.bind('claude.chunk', (_: { messageId: string; chunk: string }) => {
       setStreamingContent((prev) => prev + _.chunk);
+    });
+
+    sub.bind('claude.tool_use', ({ messageId, tools }: { messageId: string; tools: string[] }) => {
+      const labels: Record<string, string> = {
+        create_task: 'Creating task…',
+        complete_task: 'Completing task…',
+        list_tasks: 'Checking tasks…',
+        get_project_status: 'Getting project status…',
+      };
+      const label = tools.map((t) => labels[t] ?? t).join(', ');
+      setMessages((prev) => prev.map((m) =>
+        m.id === messageId ? { ...m, metadata: { ...(m.metadata as object ?? {}), toolUseLabel: label } } : m,
+      ));
     });
 
     sub.bind('claude.complete', ({ messageId, content }: { messageId: string; content: string }) => {

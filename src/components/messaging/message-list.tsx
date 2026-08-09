@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useRef, useCallback } from 'react';
 import { MessageItem, type MessageWithReactions } from './message-item';
+import { MessageSkeleton } from '@/components/ui/Skeleton';
 import type { User } from '@/lib/db/schema/messaging';
 
 interface Props {
@@ -16,11 +17,13 @@ interface Props {
   onDelete?: (messageId: string) => void;
   onCreateTask?: (message: MessageWithReactions) => void;
   onPinToggle?: (messageId: string, isPinned: boolean) => void;
+  onForward?: (message: MessageWithReactions) => void;
   onLoadMore?: () => void;
   hasMore?: boolean;
+  loading?: boolean;
 }
 
-export function MessageList({ messages, users, currentUserId, channelId, streamingMessageId, streamingContent, onReact, onReply, onEdit, onDelete, onCreateTask, onPinToggle, onLoadMore, hasMore }: Props) {
+export function MessageList({ messages, users, currentUserId, channelId, streamingMessageId, streamingContent, onReact, onReply, onEdit, onDelete, onCreateTask, onPinToggle, onForward, onLoadMore, hasMore, loading }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -39,6 +42,16 @@ export function MessageList({ messages, users, currentUserId, channelId, streami
 
   // Group messages: consecutive from same user within 5min
   const grouped = groupMessages(messages);
+
+  if (loading) {
+    return (
+      <div className="flex-1 overflow-y-auto py-4" style={{ scrollbarWidth: 'thin' }}>
+        {Array.from({ length: 8 }).map((_, i) => (
+          <MessageSkeleton key={i} />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -72,6 +85,7 @@ export function MessageList({ messages, users, currentUserId, channelId, streami
               onDelete={onDelete}
               onCreateTask={onCreateTask}
               onPinToggle={onPinToggle}
+              onForward={onForward}
               isStreaming={msg.id === streamingMessageId}
               streamContent={msg.id === streamingMessageId ? streamingContent : undefined}
             />

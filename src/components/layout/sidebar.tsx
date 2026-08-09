@@ -8,6 +8,7 @@ import {
   Bot, Settings, X, Pencil, Users,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ChannelListSkeleton } from '@/components/ui/Skeleton';
 import { cn } from '@/lib/utils';
 import type { Channel, User } from '@/lib/db/schema/messaging';
 
@@ -29,6 +30,7 @@ interface Props {
   unreadCounts?: Record<string, number>;
   notificationCount?: number;
   onOpenNotifications?: () => void;
+  loading?: boolean;
 }
 
 const CHANNEL_ICONS = { public: Hash, private: Lock, announcement: Megaphone };
@@ -79,7 +81,7 @@ function RenameWorkspaceModal({ current, onClose, onSave }: { current: string; o
   );
 }
 
-export function Sidebar({ channels, dms, currentUser, workspaceName: initialWorkspaceName, onNewChannel, unreadCounts = {}, notificationCount = 0, onOpenNotifications }: Props) {
+export function Sidebar({ channels, dms, currentUser, workspaceName: initialWorkspaceName, onNewChannel, unreadCounts = {}, notificationCount = 0, onOpenNotifications, loading }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [channelsOpen, setChannelsOpen] = useState(true);
@@ -259,22 +261,28 @@ export function Sidebar({ channels, dms, currentUser, workspaceName: initialWork
           onToggle={() => setChannelsOpen((v) => !v)}
           onAdd={onNewChannel}
         >
-          {publicChannels.map((c) => (
-            <ChannelLink
-              key={c.id}
-              channel={c}
-              active={pathname === `/channels/${c.id}`}
-              unread={unreadCounts[c.id] ?? 0}
-            />
-          ))}
-          {privateChannels.map((c) => (
-            <ChannelLink
-              key={c.id}
-              channel={c}
-              active={pathname === `/channels/${c.id}`}
-              unread={unreadCounts[c.id] ?? 0}
-            />
-          ))}
+          {loading ? (
+            <ChannelListSkeleton />
+          ) : (
+            <>
+              {publicChannels.map((c) => (
+                <ChannelLink
+                  key={c.id}
+                  channel={c}
+                  active={pathname === `/channels/${c.id}`}
+                  unread={unreadCounts[c.id] ?? 0}
+                />
+              ))}
+              {privateChannels.map((c) => (
+                <ChannelLink
+                  key={c.id}
+                  channel={c}
+                  active={pathname === `/channels/${c.id}`}
+                  unread={unreadCounts[c.id] ?? 0}
+                />
+              ))}
+            </>
+          )}
           <Link
             href="/channels/browse"
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg mx-1 text-xs transition-colors"

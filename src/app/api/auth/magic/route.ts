@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
     sameSite: 'lax',
     expires: expiresAt,
     path: '/',
-    domain: process.env.NODE_ENV === 'production' ? '.vb.co' : undefined,
+    domain: process.env.COOKIE_DOMAIN ?? '.vb.co',
   });
 
   return res;
