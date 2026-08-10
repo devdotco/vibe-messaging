@@ -7,10 +7,12 @@ import {
 import { cn } from '@/lib/utils';
 import type { User } from '@/lib/db/schema/messaging';
 
-interface AttachmentPreview { name: string; size: number; url: string; }
+interface AttachmentPreview { name: string; size: number; url: string; fileType: string; }
+
+export interface AttachmentMeta { url: string; filename: string; fileType: string; size: number; }
 
 interface Props {
-  onSend: (content: string, parentMessageId?: string) => Promise<void>;
+  onSend: (content: string, parentMessageId?: string, attachments?: AttachmentMeta[]) => Promise<void>;
   placeholder?: string;
   orgUsers?: User[];
   parentMessageId?: string;
@@ -166,15 +168,17 @@ export function RichComposer({
   }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !channelId) return;
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0 || !channelId) return;
     setUploading(true);
-    const fd = new FormData();
-    fd.append('file', file);
-    const res = await fetch(`/api/messaging/channels/${channelId}/attachments`, { method: 'POST', body: fd });
-    if (res.ok) {
-      const data = await res.json();
-      setAttachments((prev) => [...prev, { name: data.filename, size: data.size, url: data.url }]);
+    for (const file of files) {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`/api/messaging/channels/${channelId}/attachments`, { method: 'POST', body: fd });
+      if (res.ok) {
+        const data = await res.json();
+        setAttachments((prev) => [...prev, { name: data.filename, size: data.size, url: data.url, fileType: data.fileType }]);
+      }
     }
     setUploading(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -187,10 +191,6 @@ export function RichComposer({
     if (!rawText && attachments.length === 0) return;
 
     const mdContent = serializeToMarkdown(el).trim();
-    const attachmentText = attachments.map((a) => `[${a.name}](${a.url})`).join(' ');
-    const fullContent = [mdContent, attachmentText].filter(Boolean).join('\n');
-
-    if (!fullContent.trim()) return;
 
     if (channelId && isTypingRef.current) {
       isTypingRef.current = false;
@@ -198,9 +198,13 @@ export function RichComposer({
       sendTypingSignal(false);
     }
 
+    const attachmentMeta: AttachmentMeta[] = attachments.map((a) => ({
+      url: a.url, filename: a.name, fileType: a.fileType, size: a.size,
+    }));
+
     setSending(true);
     try {
-      await onSend(fullContent, parentMessageId);
+      await onSend(mdContent, parentMessageId, attachmentMeta.length > 0 ? attachmentMeta : undefined);
       el.innerHTML = '';
       setIsEmpty(true);
       setAttachments([]);
@@ -241,18 +245,30 @@ export function RichComposer({
           ))}
         </div>
 
-        {/* Attachment chips */}
+        {/* Attachment previews */}
         {attachments.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 px-3 pt-2">
-            {attachments.map((a, i) => (
-              <span key={i} className="flex items-center gap-1 text-xs bg-[var(--panel-hover)] border border-[var(--border)] rounded-lg px-2 py-0.5">
-                <Paperclip className="h-3 w-3 text-[var(--text-muted)]" />
-                <span className="truncate max-w-[100px]">{a.name}</span>
-                <button onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}>
-                  <X className="h-3 w-3 text-[var(--text-muted)]" />
-                </button>
-              </span>
-            ))}
+          <div className="flex flex-wrap gap-2 px-3 pt-2">
+            {attachments.map((a, i) => {
+              const isImage = a.fileType.startsWith('image/');
+              return (
+                <span key={i} className="relative flex items-center gap-1 text-xs bg-[var(--panel-hover)] border border-[var(--border)] rounded-lg overflow-hidden">
+                  {isImage ? (
+                    <img src={a.url} alt={a.name} className="h-14 w-14 object-cover" />
+                  ) : (
+                    <span className="flex items-center gap-1 px-2 py-1">
+                      <Paperclip className="h-3 w-3 text-[var(--text-muted)] shrink-0" />
+                      <span className="truncate max-w-[100px] text-[var(--text-secondary)]">{a.name}</span>
+                    </span>
+                  )}
+                  <button
+                    onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
+                    className="absolute top-0.5 right-0.5 bg-[var(--bg)] rounded-full p-0.5 shadow"
+                  >
+                    <X className="h-3 w-3 text-[var(--text-muted)]" />
+                  </button>
+                </span>
+              );
+            })}
           </div>
         )}
 
@@ -314,7 +330,7 @@ export function RichComposer({
         {/* Action row — row 2 */}
         <div className="flex items-center justify-between px-2 pb-2 pt-1">
           <div className="flex items-center gap-0.5">
-            <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
+            <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileChange} />
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading || !channelId}

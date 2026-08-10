@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import {
-  channels, channelMembers, messages, messageReactions, notifications, users,
+  channels, channelMembers, messages, messageReactions, messageAttachments, notifications, users,
 } from '@/lib/db/schema/messaging';
 import { requireUser } from '@/lib/auth/session';
 import { pusherServer } from '@/lib/pusher/server';
@@ -13,15 +13,24 @@ import { validate, z } from '@/lib/validate';
 import { eq, and, isNull, lt, desc, sql, inArray } from 'drizzle-orm';
 import { micromark } from 'micromark';
 
+const AttachmentSchema = z.object({
+  url: z.string().min(1),
+  filename: z.string().min(1),
+  fileType: z.string().min(1),
+  size: z.number().optional(),
+});
+
 const MessageSchema = z.object({
-  content: z.string().min(1).max(40_000),
+  content: z.string().min(0).max(40_000),
   parentMessageId: z.string().uuid().optional(),
   forwardedFromMessageId: z.string().uuid().optional(),
   forwardedFromChannelId: z.string().uuid().optional(),
+  attachments: z.array(AttachmentSchema).max(10).optional(),
 });
 
 export type ReactionGroup = { emoji: string; count: number; userIds: string[] };
-export type MessageWithReactions = typeof messages.$inferSelect & { reactions: ReactionGroup[] };
+export type AttachmentRow = { id: string; url: string; filename: string; fileType: string; fileSize: number | null };
+export type MessageWithReactions = typeof messages.$inferSelect & { reactions: ReactionGroup[]; attachments: AttachmentRow[] };
 
 function groupReactions(rows: (typeof messageReactions.$inferSelect)[]): ReactionGroup[] {
   const map: Record<string, ReactionGroup> = {};
@@ -74,15 +83,26 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ chan
     ? await db.select().from(messageReactions).where(inArray(messageReactions.messageId, messageIds))
     : [];
 
+  const allAttachmentsRows = messageIds.length > 0
+    ? await db.select().from(messageAttachments).where(inArray(messageAttachments.messageId, messageIds))
+    : [];
+
   const reactionsByMessage: Record<string, typeof allReactions> = {};
   for (const r of allReactions) {
     if (!reactionsByMessage[r.messageId]) reactionsByMessage[r.messageId] = [];
     reactionsByMessage[r.messageId].push(r);
   }
 
+  const attachmentsByMessage: Record<string, AttachmentRow[]> = {};
+  for (const a of allAttachmentsRows) {
+    if (!attachmentsByMessage[a.messageId]) attachmentsByMessage[a.messageId] = [];
+    attachmentsByMessage[a.messageId].push({ id: a.id, url: a.url, filename: a.filename, fileType: a.fileType, fileSize: a.fileSize });
+  }
+
   const messagesWithReactions: MessageWithReactions[] = pageRows.reverse().map((msg) => ({
     ...msg,
     reactions: groupReactions(reactionsByMessage[msg.id] ?? []),
+    attachments: attachmentsByMessage[msg.id] ?? [],
   }));
 
   // Mark channel as read for this user
@@ -105,6 +125,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cha
   const parsed_body = validate(MessageSchema, await req.json());
   if (!parsed_body.success) return parsed_body.response;
   const body = parsed_body.data;
+
+  if (!body.content.trim() && (!body.attachments || body.attachments.length === 0)) {
+    return NextResponse.json({ error: 'Message cannot be empty' }, { status: 400 });
+  }
 
   // 1. Verify channel membership
   const [membership] = await db
@@ -186,8 +210,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cha
     }).catch(() => {});
   }
 
-  // 8. Broadcast to channel
-  const messageWithReactions: MessageWithReactions = { ...message, reactions: [] };
+  // 8. Save attachments
+  let savedAttachments: AttachmentRow[] = [];
+  if (body.attachments?.length) {
+    const inserted = await db.insert(messageAttachments).values(
+      body.attachments.map((a) => ({
+        messageId: message.id,
+        orgId: user.orgId,
+        url: a.url,
+        filename: a.filename,
+        fileType: a.fileType,
+        fileSize: a.size ?? null,
+      }))
+    ).returning();
+    savedAttachments = inserted.map((a) => ({ id: a.id, url: a.url, filename: a.filename, fileType: a.fileType, fileSize: a.fileSize }));
+  }
+
+  // 9. Broadcast to channel
+  const messageWithReactions: MessageWithReactions = { ...message, reactions: [], attachments: savedAttachments };
   await pusherServer.trigger(`org-${user.orgId}-channel-${channelId}`, 'message.new', { message: messageWithReactions });
 
   // 9. Create @mention notifications + email

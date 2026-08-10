@@ -10,6 +10,7 @@ import { PinsTab } from '@/components/messaging/pins-tab';
 import { getPusherClient } from '@/lib/pusher/client';
 import type { Channel, User } from '@/lib/db/schema/messaging';
 import type { MessageWithReactions } from '@/components/messaging/message-item';
+import type { AttachmentMeta } from '@/components/messaging/rich-composer';
 
 type Tab = 'messages' | 'files' | 'pins';
 
@@ -167,11 +168,11 @@ export function ChannelView({ channel: initialChannel, initialMessages, usersMap
     };
   }, [channel.id, currentUser.orgId, currentUser.id]);
 
-  const handleSend = useCallback(async (content: string, parentMessageId?: string) => {
+  const handleSend = useCallback(async (content: string, parentMessageId?: string, attachments?: AttachmentMeta[]) => {
     await fetch(`/api/messaging/channels/${channel.id}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content, parentMessageId }),
+      body: JSON.stringify({ content, parentMessageId, attachments }),
     });
   }, [channel.id]);
 
@@ -337,11 +338,11 @@ function ThreadPanel({ message, users, channelId, currentUser, onClose }: {
     return () => { sub.unbind_all(); };
   }, [channelId, message.id, currentUser.orgId]);
 
-  async function handleSend(content: string) {
+  async function handleSend(content: string, _parentMessageId?: string, attachments?: AttachmentMeta[]) {
     await fetch(`/api/messaging/channels/${channelId}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content, parentMessageId: message.id }),
+      body: JSON.stringify({ content, parentMessageId: message.id, attachments }),
     });
   }
 

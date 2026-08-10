@@ -1,6 +1,9 @@
 #!/bin/sh
 set -e
 
+echo "[startup] Ensuring upload directory..."
+mkdir -p "${UPLOAD_DIR:-/tmp/vibe-uploads}"
+
 echo "[startup] Running migrations..."
 # Convert drizzle SQL (remove statement-breakpoint markers) and apply
 sed 's/--> statement-breakpoint/;/g' db/migrations/0000_init.sql | \

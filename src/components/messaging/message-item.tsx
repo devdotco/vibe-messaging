@@ -1,14 +1,16 @@
 'use client';
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { Paperclip } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ClaudeAvatar, ClaudeAiBadge } from './claude-avatar';
 import { formatTime, formatCost, cn } from '@/lib/utils';
 import type { Message, User } from '@/lib/db/schema/messaging';
-import type { ReactionGroup } from '@/app/api/messaging/channels/[channelId]/messages/route';
+import type { ReactionGroup, AttachmentRow } from '@/app/api/messaging/channels/[channelId]/messages/route';
 
 export interface MessageWithReactions extends Message {
   reactions?: ReactionGroup[];
+  attachments?: AttachmentRow[];
 }
 
 interface Props {
@@ -194,6 +196,40 @@ export function MessageItem({ message, user, currentUserId, channelId, onReact, 
         ) : (
           <div className="text-sm text-[var(--text-primary)] prose prose-sm max-w-none [&_p]:my-0.5 [&_p]:leading-relaxed [&_strong]:font-semibold [&_code]:bg-[var(--panel-hover)] [&_code]:px-1 [&_code]:rounded [&_a]:text-[var(--accent)] whitespace-pre-wrap break-words">
             <ReactMarkdown>{content}</ReactMarkdown>
+          </div>
+        )}
+
+        {/* Attachments */}
+        {message.attachments && message.attachments.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {message.attachments.map((att) => {
+              const isImage = att.fileType.startsWith('image/');
+              if (isImage) {
+                return (
+                  <a key={att.id} href={att.url} target="_blank" rel="noopener noreferrer">
+                    <img
+                      src={att.url}
+                      alt={att.filename}
+                      className="max-w-xs max-h-64 rounded-lg border border-[var(--border)] object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                    />
+                  </a>
+                );
+              }
+              return (
+                <a
+                  key={att.id}
+                  href={att.url}
+                  download={att.filename}
+                  className="flex items-center gap-2 text-xs bg-[var(--panel-hover)] border border-[var(--border)] rounded-lg px-3 py-2 hover:border-[var(--accent)] transition-colors text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                >
+                  <Paperclip className="h-3 w-3 shrink-0" />
+                  <span className="truncate max-w-[200px]">{att.filename}</span>
+                  {att.fileSize && (
+                    <span className="text-[var(--text-muted)] shrink-0">{(att.fileSize / 1024).toFixed(1)}KB</span>
+                  )}
+                </a>
+              );
+            })}
           </div>
         )}
 

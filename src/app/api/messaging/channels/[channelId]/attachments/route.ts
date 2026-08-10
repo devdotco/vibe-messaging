@@ -38,7 +38,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cha
   const bytes = await file.arrayBuffer();
   await writeFile(filePath, Buffer.from(bytes));
 
-  const urlPath = `/uploads/${user.orgId}/${channelId}/${uniqueName}`;
+  const urlPath = `/api/files/${user.orgId}/${channelId}/${uniqueName}`;
 
   return NextResponse.json({
     url: urlPath,
