@@ -26,31 +26,34 @@ export async function POST(req: NextRequest) {
     ''
   );
 
-  console.log('[inbound]', { from, to: to.slice(0, 60), textLen: text.length });
+  console.log('[inbound]', { from, to: to.slice(0, 80), textLen: text.length });
 
   // Proxy task/project types to PM BEFORE any local verification —
   // messaging's TYPE_DECODE only knows c/d, so HMAC would fail on t/p.
   const typeCode = to.match(/reply\+([a-z])-/)?.[1];
   if (typeCode === 't' || typeCode === 'p') {
-    await fetch('https://pm.vb.co/api/webhooks/email/inbound', {
+    const pmRes = await fetch('https://pm.vb.co/api/webhooks/email/inbound', {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
         'x-internal-secret': process.env.EMAIL_REPLY_SECRET ?? '',
       },
       body: JSON.stringify({ from, to, text }),
-    }).catch(console.error);
+    }).catch((e: Error) => { console.error('[inbound] pm proxy error', e.message); return null; });
+    console.log('[inbound] pm proxy status', pmRes?.status);
     return NextResponse.json({ ok: true });
   }
 
   const fromEmailMatch = from.match(/<([^>]+)>/) ?? from.match(/(\S+@\S+)/);
   const fromEmail = (fromEmailMatch ? fromEmailMatch[1] : from)!;
 
+  console.log('[inbound] verifying', { typeCode, fromEmail, toSlice: to.slice(0, 80) });
   const parsed = verifyReplyAddress(to, fromEmail);
   if (!parsed) {
-    console.error('[inbound] verifyReplyAddress failed', { to, fromEmail });
+    console.error('[inbound] verifyReplyAddress FAILED — HMAC mismatch or bad format', { to, fromEmail });
     return NextResponse.json({ error: 'Invalid reply address' }, { status: 400 });
   }
+  console.log('[inbound] verified', { type: parsed.type, entityId: parsed.entityId });
 
   const { type, entityId } = parsed;
   const replyText = stripQuotedReply(text);
@@ -62,7 +65,11 @@ export async function POST(req: NextRequest) {
     // Find the channel and get orgId
     const [channel] = await db.select().from(channels)
       .where(eq(channels.id, channelId)).limit(1);
-    if (!channel) return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
+    if (!channel) {
+      console.error('[inbound] channel not found', { channelId });
+      return NextResponse.json({ error: 'Channel not found' }, { status: 404 });
+    }
+    console.log('[inbound] channel found', { channelId, orgId: channel.orgId });
 
     // Find or create user by email
     let [user] = await db.select().from(users)
@@ -86,12 +93,15 @@ export async function POST(req: NextRequest) {
       source: 'email',
     }).returning();
 
+    console.log('[inbound] message inserted', { messageId: message?.id, channelId });
+
     await pusherServer.trigger(
       `org-${channel.orgId}-channel-${channelId}`,
       'message.new',
       { message: { ...message, reactions: [] } },
     );
 
+    console.log('[inbound] pusher triggered for channel', channelId);
     return NextResponse.json({ ok: true });
   }
 
