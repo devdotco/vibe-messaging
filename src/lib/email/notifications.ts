@@ -11,9 +11,16 @@ const REPLY_DOMAIN = process.env.EMAIL_REPLY_DOMAIN ?? 'reply.vb.co';
 const REPLY_SECRET = process.env.EMAIL_REPLY_SECRET ?? 'dev-secret';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://chat.vb.co';
 
+// Strip plus-addressing (e.g. user+tag@gmail.com → user@gmail.com) before hashing
+// so that Gmail alias recipients can reply from their base address and still verify.
+function normalizeEmail(email: string) {
+  const [local, domain] = email.split('@');
+  return `${(local ?? '').replace(/\+.*$/, '')}@${domain ?? ''}`.toLowerCase();
+}
+
 function replyToken(type: string, entityId: string, recipientEmail: string) {
   return crypto.createHmac('sha256', REPLY_SECRET)
-    .update(`${type}:${entityId}:${recipientEmail}`)
+    .update(`${type}:${entityId}:${normalizeEmail(recipientEmail)}`)
     .digest('hex').slice(0, 16);
 }
 
