@@ -6,6 +6,9 @@ echo "[startup] Running migrations..."
 sed 's/--> statement-breakpoint/;/g' db/migrations/0000_init.sql | \
   psql "$DATABASE_URL" --single-transaction -v ON_ERROR_STOP=0 2>&1 | \
   grep -v "^psql\|already exists\|duplicate" || true
+sed 's/--> statement-breakpoint/;/g' db/migrations/0001_messages_mention_cols.sql | \
+  psql "$DATABASE_URL" --single-transaction -v ON_ERROR_STOP=0 2>&1 | \
+  grep -v "^psql\|already exists\|duplicate" || true
 echo "[startup] Migrations done."
 
 echo "[startup] Adding pin columns if missing..."
