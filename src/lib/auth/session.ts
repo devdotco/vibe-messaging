@@ -5,7 +5,9 @@ import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 
 const COOKIE_NAME = '__vibe_session';
-const PORTAL_URL = process.env.AUTH_URL ?? 'https://portal.vb.co';
+// finance.vb.co is the canonical ViBe auth source — it issues __vibe_session
+// and exposes /api/auth/me for cross-app session validation.
+const AUTH_URL = process.env.AUTH_URL ?? 'https://finance.vb.co';
 
 function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -26,11 +28,10 @@ export async function getCurrentUser() {
 
   if (session?.user.status === 'active') return session.user;
 
-  // 2. Cross-app SSO: validate the token against portal.vb.co (the canonical
-  //    auth source). The session was created there — our local DB has no record
-  //    of it until we upsert below.
+  // 2. Cross-app SSO: validate against finance.vb.co (the canonical auth source).
+  //    Session was created there; our local DB has no record until we upsert below.
   try {
-    const res = await fetch(`${PORTAL_URL}/api/auth/me`, {
+    const res = await fetch(`${AUTH_URL}/api/auth/me`, {
       headers: { cookie: `${COOKIE_NAME}=${token}` },
       cache: 'no-store',
     });
