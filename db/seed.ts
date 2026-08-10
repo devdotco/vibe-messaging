@@ -84,7 +84,24 @@ async function seed() {
 
   console.log('✅ Claude bot user seeded');
 
-  // 2. RBAC policies
+  // 2. Platform admin user — upsert by email so role is preserved on reseed
+  const adminEmail = process.env.ADMIN_EMAIL ?? 'nate@dev.co';
+  const existingAdmin = await db.select().from(schema.users).where(eq(schema.users.email, adminEmail)).limit(1);
+  if (existingAdmin.length > 0) {
+    await db.update(schema.users).set({ role: 'PLATFORM_ADMIN' }).where(eq(schema.users.email, adminEmail));
+  } else {
+    await db.insert(schema.users).values({
+      orgId: ORG_ID,
+      email: adminEmail,
+      name: adminEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+      status: 'active',
+      role: 'PLATFORM_ADMIN',
+    }).onConflictDoNothing();
+  }
+
+  console.log(`✅ Admin user seeded (${adminEmail})`);
+
+  // 3. RBAC policies
   for (const { role, domains } of ROLE_POLICIES) {
     for (const domain of domains) {
       await db.insert(schema.claudeRolePolicies).values({
@@ -97,7 +114,7 @@ async function seed() {
   }
   console.log('✅ RBAC policies seeded');
 
-  // 3. Default workspace
+  // 4. Default workspace
   const [workspace] = await db.insert(schema.workspaces).values({
     orgId: ORG_ID,
     name: 'ViBe',
@@ -106,7 +123,7 @@ async function seed() {
 
   const wsId = workspace?.id;
 
-  // 4. Default channels
+  // 5. Default channels
   const defaultChannels = [
     { name: 'general', description: 'Company-wide announcements and discussion', isDefault: true },
     { name: 'announcements', description: 'Important company announcements', type: 'announcement' as const },
