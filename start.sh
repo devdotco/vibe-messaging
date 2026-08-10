@@ -28,6 +28,12 @@ ALTER TABLE messages ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'app'
 SOURCE_SQL
 echo "[startup] Email source column done."
 
+echo "[startup] Adding personal_email column to users if missing..."
+psql "$DATABASE_URL" <<'PERSONAL_EMAIL_SQL'
+ALTER TABLE users ADD COLUMN IF NOT EXISTS personal_email text;
+PERSONAL_EMAIL_SQL
+echo "[startup] personal_email column done."
+
 echo "[startup] Adding unique constraint on channels (org_id, name)..."
 psql "$DATABASE_URL" <<'UNIQ'
 CREATE UNIQUE INDEX IF NOT EXISTS channels_org_name_unique ON channels (org_id, name);

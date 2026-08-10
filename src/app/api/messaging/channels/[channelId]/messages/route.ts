@@ -249,14 +249,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cha
     // Email notification (fire and forget — skip self-mentions)
     if (mentionedId !== user.id) {
       const mentionedUser = orgUsers.find((u) => u.id === mentionedId);
-      if (mentionedUser?.email) {
+      const notifEmail = mentionedUser?.personalEmail ?? mentionedUser?.email;
+      if (notifEmail) {
         sendMentionEmail({
           channelId,
           channelName: channel.name,
           messageText: body.content,
           senderName: user.name,
-          recipientEmail: mentionedUser.email,
-          recipientName: mentionedUser.name,
+          recipientEmail: notifEmail,
+          recipientName: mentionedUser!.name,
           channelUrl: `${appUrl}/channels/${channelId}`,
         }).catch(() => {});
       }

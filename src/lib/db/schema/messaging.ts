@@ -14,6 +14,7 @@ export const users = pgTable('users', {
   role: text('role').notNull().default('TEAM_MEMBER'),
   status: text('status').notNull().default('active'),
   isPlatformUser: boolean('is_platform_user').default(false),
+  personalEmail: text('personal_email'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
