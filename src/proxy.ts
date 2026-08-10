@@ -7,9 +7,12 @@ export function proxy(req: NextRequest) {
   if (isPublic) return NextResponse.next();
   const token = req.cookies.get('__vibe_session')?.value;
   if (!token) {
-    const signInUrl = process.env.AUTH_URL ?? 'https://app.vb.co';
+    const signInUrl = process.env.AUTH_URL ?? 'https://finance.vb.co';
+    const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'chat.vb.co';
+    const proto = req.headers.get('x-forwarded-proto') ?? 'https';
+    const publicUrl = `${proto}://${host}${req.nextUrl.pathname}${req.nextUrl.search}`;
     return NextResponse.redirect(
-      new URL(`/sign-in?next=${encodeURIComponent(req.url)}`, signInUrl)
+      new URL(`/sign-in?next=${encodeURIComponent(publicUrl)}`, signInUrl)
     );
   }
   return NextResponse.next();
