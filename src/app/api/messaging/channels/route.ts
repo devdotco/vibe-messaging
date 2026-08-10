@@ -36,6 +36,16 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return parsed.response;
   const body = parsed.data;
 
+  // Check if channel name already exists in this org
+  const [existing] = await db
+    .select()
+    .from(channels)
+    .where(and(eq(channels.orgId, user.orgId), eq(channels.name, body.name)));
+
+  if (existing) {
+    return NextResponse.json({ error: `A channel named "${body.name}" already exists.` }, { status: 409 });
+  }
+
   const [channel] = await db
     .insert(channels)
     .values({

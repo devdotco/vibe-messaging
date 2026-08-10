@@ -25,16 +25,10 @@ ALTER TABLE messages ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'app'
 SOURCE_SQL
 echo "[startup] Email source column done."
 
-echo "[startup] Deduplicating channels..."
-psql "$DATABASE_URL" <<'DEDUP'
--- Keep only the earliest channel per (org_id, name), delete the rest
-DELETE FROM channels
-WHERE id NOT IN (
-  SELECT DISTINCT ON (org_id, name) id
-  FROM channels
-  ORDER BY org_id, name, created_at ASC
-);
-DEDUP
+echo "[startup] Adding unique constraint on channels (org_id, name)..."
+psql "$DATABASE_URL" <<'UNIQ'
+CREATE UNIQUE INDEX IF NOT EXISTS channels_org_name_unique ON channels (org_id, name);
+UNIQ
 
 echo "[startup] Seeding Claude bot + RBAC policies..."
 psql "$DATABASE_URL" -v bot_id="$CLAUDE_BOT_USER_ID" <<'SQL'

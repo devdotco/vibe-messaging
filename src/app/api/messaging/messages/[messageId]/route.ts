@@ -4,15 +4,18 @@ import { messages } from '@/lib/db/schema/messaging';
 import { requireUser } from '@/lib/auth/session';
 import { pusherServer } from '@/lib/pusher/server';
 import { eq, and } from 'drizzle-orm';
+import { micromark } from 'micromark';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ messageId: string }> }) {
   const user = await requireUser();
   const { messageId } = await params;
   const { content } = await req.json();
 
+  const contentHtml = micromark(content);
+
   const [updated] = await db
     .update(messages)
-    .set({ content, editedAt: new Date() })
+    .set({ content, contentHtml, editedAt: new Date() })
     .where(and(eq(messages.id, messageId), eq(messages.userId, user.id)))
     .returning();
 
@@ -21,7 +24,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ me
   await pusherServer.trigger(
     `org-${user.orgId}-channel-${updated.channelId}`,
     'message.updated',
-    { messageId, content },
+    { messageId, content, contentHtml },
   );
 
   return NextResponse.json(updated);

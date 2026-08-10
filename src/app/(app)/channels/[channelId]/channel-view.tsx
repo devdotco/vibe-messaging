@@ -62,8 +62,8 @@ export function ChannelView({ channel: initialChannel, initialMessages, usersMap
       setMessages((prev) => prev.map((m) => m.id === parentId ? { ...m, threadReplyCount, threadLastReplyAt: new Date(threadLastReplyAt) } : m));
     });
 
-    sub.bind('message.updated', ({ messageId, content }: { messageId: string; content: string }) => {
-      setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, content } : m));
+    sub.bind('message.updated', ({ messageId, content, contentHtml }: { messageId: string; content: string; contentHtml?: string | null }) => {
+      setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, content, contentHtml: contentHtml ?? null } : m));
     });
 
     sub.bind('message.deleted', ({ messageId }: { messageId: string }) => {
