@@ -31,6 +31,22 @@ interface Props {
 
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '🚀', '👀'];
 
+// Converts bare URLs and domain names to markdown link syntax before ReactMarkdown processes them.
+// Skips text already inside markdown links [text](url).
+const URL_RE = /(https?:\/\/[^\s<>"'[\]]+|www\.[^\s<>"'[\]]+|[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.(?:com|org|net|io|co|gov|edu|app|dev|ai|tech|info|me|us|uk|au|ca|de|fr|jp|cn|br|in|ru|nl)(?:\/[^\s<>"'[\]]*)?)/gi;
+
+function linkify(text: string): string {
+  return text.replace(/(\[.*?\]\(.*?\))|([^\[]+(?:\[(?!.*?\]\(.*?\))[^\[]*)*)/g, (m, link, plain) => {
+    if (link) return link;
+    return plain.replace(URL_RE, (url: string) => {
+      const clean = url.replace(/[.,;:!?)\]]+$/, '');
+      const trail = url.slice(clean.length);
+      const href = /^https?:\/\//i.test(clean) ? clean : `https://${clean}`;
+      return `[${clean}](${href})${trail}`;
+    });
+  });
+}
+
 export function MessageItem({ message, user, currentUserId, channelId, onReact, onReply, onEdit, onDelete, onCreateTask, onPinToggle, onForward, isStreaming, streamContent }: Props) {
   const [hovering, setHovering] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -185,7 +201,7 @@ export function MessageItem({ message, user, currentUserId, channelId, onReact, 
                 )}
               </div>
             ) : (
-              <ReactMarkdown>{content}</ReactMarkdown>
+              <ReactMarkdown>{linkify(content)}</ReactMarkdown>
             )}
           </div>
         ) : message.contentHtml ? (
@@ -195,7 +211,7 @@ export function MessageItem({ message, user, currentUserId, channelId, onReact, 
           />
         ) : (
           <div className="text-sm text-[var(--text-primary)] prose prose-sm max-w-none [&_p]:my-0.5 [&_p]:leading-relaxed [&_strong]:font-semibold [&_code]:bg-[var(--panel-hover)] [&_code]:px-1 [&_code]:rounded [&_a]:text-[var(--accent)] whitespace-pre-wrap break-words">
-            <ReactMarkdown>{content}</ReactMarkdown>
+            <ReactMarkdown>{linkify(content)}</ReactMarkdown>
           </div>
         )}
 
