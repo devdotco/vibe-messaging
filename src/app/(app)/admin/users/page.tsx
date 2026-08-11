@@ -23,5 +23,5 @@ export default async function AdminUsersPage() {
     .from(users)
     .orderBy(desc(users.createdAt));
 
-  return <UsersAdminClient initialUsers={allUsers} />;
+  return <UsersAdminClient initialUsers={allUsers} currentUserId={user.id} />;
 }

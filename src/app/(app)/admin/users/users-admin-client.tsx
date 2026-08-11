@@ -28,11 +28,13 @@ interface AdminUser {
 
 interface Props {
   initialUsers: AdminUser[];
+  currentUserId: string;
 }
 
-export function UsersAdminClient({ initialUsers }: Props) {
+export function UsersAdminClient({ initialUsers, currentUserId }: Props) {
   const [users, setUsers] = useState<AdminUser[]>(initialUsers);
   const [showInvite, setShowInvite] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   async function handleRoleChange(userId: string, role: string) {
@@ -57,6 +59,14 @@ export function UsersAdminClient({ initialUsers }: Props) {
     if (res.ok) {
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, status: newStatus } : u)));
     }
+  }
+
+  async function handleDelete(userId: string) {
+    const res = await fetch(`/api/messaging/admin/users/${userId}`, { method: 'DELETE' });
+    if (res.ok) {
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+    }
+    setConfirmDeleteId(null);
   }
 
   function handleUserCreated(newUser: AdminUser) {
@@ -88,6 +98,7 @@ export function UsersAdminClient({ initialUsers }: Props) {
                 <th className="px-4 py-3">Role</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Joined</th>
+                <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
@@ -123,11 +134,21 @@ export function UsersAdminClient({ initialUsers }: Props) {
                   <td className="px-4 py-3 text-xs text-[var(--text-muted)] font-mono">
                     {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
                   </td>
+                  <td className="px-4 py-3 text-right">
+                    {u.id !== currentUserId && (
+                      <button
+                        onClick={() => setConfirmDeleteId(u.id)}
+                        className="text-xs text-red-500 hover:text-red-400 transition-colors px-2 py-1 rounded hover:bg-red-500/10"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
               {users.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-[var(--text-muted)] text-sm">
+                  <td colSpan={5} className="px-4 py-8 text-center text-[var(--text-muted)] text-sm">
                     No users found.
                   </td>
                 </tr>
@@ -140,6 +161,41 @@ export function UsersAdminClient({ initialUsers }: Props) {
       {showInvite && (
         <InviteModal onClose={() => setShowInvite(false)} onCreated={handleUserCreated} />
       )}
+
+      {confirmDeleteId && (() => {
+        const target = users.find(u => u.id === confirmDeleteId);
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            style={{ background: 'rgba(0,0,0,0.5)' }}
+            onClick={(e) => { if (e.target === e.currentTarget) setConfirmDeleteId(null); }}
+          >
+            <div
+              className="rounded-xl border border-[var(--border)] shadow-2xl w-full max-w-sm p-6"
+              style={{ background: 'var(--bg-elevated)' }}
+            >
+              <h2 className="font-bold text-[var(--text-primary)] mb-2">Delete user?</h2>
+              <p className="text-sm text-[var(--text-muted)] mb-6">
+                <strong>{target?.name}</strong> ({target?.email}) will be permanently removed along with their sessions and channel memberships. This cannot be undone.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setConfirmDeleteId(null)}
+                  className="px-4 py-2 rounded-lg text-sm text-[var(--text-secondary)] hover:bg-[var(--panel-hover)] transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDelete(confirmDeleteId)}
+                  className="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-500 text-white transition-colors"
+                >
+                  Delete user
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
