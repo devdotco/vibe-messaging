@@ -31,20 +31,23 @@ interface Props {
 
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '🚀', '👀'];
 
-// Converts bare URLs and domain names to markdown link syntax before ReactMarkdown processes them.
-// Skips text already inside markdown links [text](url).
-const URL_RE = /(https?:\/\/[^\s<>"'[\]]+|www\.[^\s<>"'[\]]+|[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.(?:com|org|net|io|co|gov|edu|app|dev|ai|tech|info|me|us|uk|au|ca|de|fr|jp|cn|br|in|ru|nl)(?:\/[^\s<>"'[\]]*)?)/gi;
+const URL_TOKEN_RE = /(https?:\/\/[^\s<>"'[\]]+|www\.[^\s<>"'[\]]+|[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.(?:com|org|net|io|co|gov|edu|app|dev|ai|tech|info|me|us|uk|au|ca|de|fr|jp|cn|br|in|ru|nl)(?:\/[^\s<>"'[\]]*)?)/gi;
 
-function linkify(text: string): string {
-  return text.replace(/(\[.*?\]\(.*?\))|([^\[]+(?:\[(?!.*?\]\(.*?\))[^\[]*)*)/g, (m, link, plain) => {
-    if (link) return link;
-    return plain.replace(URL_RE, (url: string) => {
-      const clean = url.replace(/[.,;:!?)\]]+$/, '');
-      const trail = url.slice(clean.length);
-      const href = /^https?:\/\//i.test(clean) ? clean : `https://${clean}`;
-      return `[${clean}](${href})${trail}`;
-    });
-  });
+function renderWithLinks(text: string) {
+  const parts = text.split(URL_TOKEN_RE);
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (URL_TOKEN_RE.test(part)) {
+          URL_TOKEN_RE.lastIndex = 0;
+          const href = /^https?:\/\//i.test(part) ? part : `https://${part}`;
+          return <a key={i} href={href} target="_blank" rel="noopener noreferrer" className="text-[var(--accent)] underline break-all">{part}</a>;
+        }
+        URL_TOKEN_RE.lastIndex = 0;
+        return part;
+      })}
+    </>
+  );
 }
 
 export function MessageItem({ message, user, currentUserId, channelId, onReact, onReply, onEdit, onDelete, onCreateTask, onPinToggle, onForward, isStreaming, streamContent }: Props) {
@@ -201,7 +204,7 @@ export function MessageItem({ message, user, currentUserId, channelId, onReact, 
                 )}
               </div>
             ) : (
-              <ReactMarkdown>{linkify(content)}</ReactMarkdown>
+              <ReactMarkdown>{content}</ReactMarkdown>
             )}
           </div>
         ) : message.contentHtml ? (
@@ -210,8 +213,8 @@ export function MessageItem({ message, user, currentUserId, channelId, onReact, 
             dangerouslySetInnerHTML={{ __html: message.contentHtml }}
           />
         ) : (
-          <div className="text-sm text-[var(--text-primary)] prose prose-sm max-w-none [&_p]:my-0.5 [&_p]:leading-relaxed [&_strong]:font-semibold [&_code]:bg-[var(--panel-hover)] [&_code]:px-1 [&_code]:rounded [&_a]:text-[var(--accent)] whitespace-pre-wrap break-words">
-            <ReactMarkdown>{linkify(content)}</ReactMarkdown>
+          <div className="text-sm text-[var(--text-primary)] whitespace-pre-wrap break-words">
+            {renderWithLinks(content)}
           </div>
         )}
 
