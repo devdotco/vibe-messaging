@@ -12,6 +12,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { validate, z } from '@/lib/validate';
 import { eq, and, isNull, lt, desc, sql, inArray } from 'drizzle-orm';
 import { micromark } from 'micromark';
+import { linkifyMarkdown } from '@/lib/linkify';
 
 const AttachmentSchema = z.object({
   url: z.string().min(1),
@@ -169,8 +170,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cha
     );
   }
 
-  // 5. Generate contentHtml from markdown
-  const contentHtml = micromark(body.content);
+  // 5. Generate contentHtml from markdown (linkify bare URLs first)
+  const contentHtml = micromark(linkifyMarkdown(body.content));
 
   // 6. Save message
   const [message] = await db

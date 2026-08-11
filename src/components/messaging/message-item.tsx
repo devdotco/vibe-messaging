@@ -5,6 +5,7 @@ import { Paperclip } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ClaudeAvatar, ClaudeAiBadge } from './claude-avatar';
 import { formatTime, formatCost, cn } from '@/lib/utils';
+import { linkifyHtml } from '@/lib/linkify';
 import type { Message, User } from '@/lib/db/schema/messaging';
 import type { ReactionGroup, AttachmentRow } from '@/app/api/messaging/channels/[channelId]/messages/route';
 
@@ -210,7 +211,7 @@ export function MessageItem({ message, user, currentUserId, channelId, onReact, 
         ) : message.contentHtml ? (
           <div
             className="text-sm text-[var(--text-primary)] prose prose-sm max-w-none [&_p]:my-0.5 [&_a]:text-[var(--accent)] [&_code]:bg-[var(--panel-hover)] [&_code]:px-1 [&_code]:rounded"
-            dangerouslySetInnerHTML={{ __html: message.contentHtml }}
+            dangerouslySetInnerHTML={{ __html: linkifyHtml(message.contentHtml) }}
           />
         ) : (
           <div className="text-sm text-[var(--text-primary)] whitespace-pre-wrap break-words">

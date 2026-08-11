@@ -5,13 +5,14 @@ import { requireUser } from '@/lib/auth/session';
 import { pusherServer } from '@/lib/pusher/server';
 import { eq, and } from 'drizzle-orm';
 import { micromark } from 'micromark';
+import { linkifyMarkdown } from '@/lib/linkify';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ messageId: string }> }) {
   const user = await requireUser();
   const { messageId } = await params;
   const { content } = await req.json();
 
-  const contentHtml = micromark(content);
+  const contentHtml = micromark(linkifyMarkdown(content));
 
   const [updated] = await db
     .update(messages)
