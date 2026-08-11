@@ -246,21 +246,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cha
       'notification.new',
       { type: 'mention', channelId, messageId: message.id },
     );
-    // Email notification (fire and forget — skip self-mentions)
-    if (mentionedId !== user.id) {
-      const mentionedUser = orgUsers.find((u) => u.id === mentionedId);
-      const notifEmail = mentionedUser?.personalEmail ?? mentionedUser?.email;
-      if (notifEmail) {
-        sendMentionEmail({
-          channelId,
-          channelName: channel.name,
-          messageText: body.content,
-          senderName: user.name,
-          recipientEmail: notifEmail,
-          recipientName: mentionedUser!.name,
-          channelUrl: `${appUrl}/channels/${channelId}`,
-        }).catch(() => {});
-      }
+    // Email notification (fire and forget)
+    const mentionedUser = orgUsers.find((u) => u.id === mentionedId);
+    const notifEmail = mentionedUser?.personalEmail ?? mentionedUser?.email;
+    if (notifEmail) {
+      sendMentionEmail({
+        channelId,
+        channelName: channel.name,
+        messageText: body.content,
+        senderName: user.name,
+        recipientEmail: notifEmail,
+        recipientName: mentionedUser!.name,
+        channelUrl: `${appUrl}/channels/${channelId}`,
+      }).catch(() => {});
     }
   }
 
