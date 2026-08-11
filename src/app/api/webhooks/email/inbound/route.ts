@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { messages, channels, users, dmMessages, dmConversations } from '@/lib/db/schema/messaging';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 import { verifyReplyAddress, stripQuotedReply } from '@/lib/email/notifications';
 import { pusherServer } from '@/lib/pusher/server';
 
@@ -71,9 +71,12 @@ export async function POST(req: NextRequest) {
     }
     console.log('[inbound] channel found', { channelId, orgId: channel.orgId });
 
-    // Find or create user by email
+    // Find or create user by email — check both login email and personal_email
     let [user] = await db.select().from(users)
-      .where(and(eq(users.orgId, channel.orgId), eq(users.email, fromEmail))).limit(1);
+      .where(and(
+        eq(users.orgId, channel.orgId),
+        or(eq(users.email, fromEmail), eq(users.personalEmail, fromEmail)),
+      )).limit(1);
     if (!user) {
       const name = from.replace(/<[^>]+>/, '').trim() || fromEmail.split('@')[0]!;
       [user] = await db.insert(users).values({
@@ -113,7 +116,10 @@ export async function POST(req: NextRequest) {
     if (!convo) return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
 
     let [user] = await db.select().from(users)
-      .where(and(eq(users.orgId, convo.orgId), eq(users.email, fromEmail))).limit(1);
+      .where(and(
+        eq(users.orgId, convo.orgId),
+        or(eq(users.email, fromEmail), eq(users.personalEmail, fromEmail)),
+      )).limit(1);
     if (!user) {
       const name = from.replace(/<[^>]+>/, '').trim() || fromEmail.split('@')[0]!;
       [user] = await db.insert(users).values({
