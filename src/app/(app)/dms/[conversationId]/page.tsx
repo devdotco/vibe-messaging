@@ -76,7 +76,7 @@ export default function DmPage() {
           <div className="flex items-center gap-2">
             <div
               className="h-7 w-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
-              style={{ background: '#4f46e5' }}
+              style={{ background: '#2f5cff' }}
             >
               {otherUser.name[0]?.toUpperCase()}
             </div>

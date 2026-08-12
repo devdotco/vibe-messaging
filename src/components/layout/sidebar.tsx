@@ -308,7 +308,7 @@ export function Sidebar({ channels, dms, currentUser, workspaceName: initialWork
               <div className="relative shrink-0">
                 <Avatar className="h-5 w-5">
                   <AvatarImage src={currentUser.avatarUrl ?? ''} />
-                  <AvatarFallback style={{ background: '#4f46e5', color: '#fff', fontSize: 9 }}>
+                  <AvatarFallback style={{ background: '#2f5cff', color: '#fff', fontSize: 9 }}>
                     {currentUser.name[0]?.toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -336,7 +336,7 @@ export function Sidebar({ channels, dms, currentUser, workspaceName: initialWork
                 <div className="relative shrink-0">
                   <Avatar className="h-5 w-5">
                     <AvatarImage src={dm.avatarUrl ?? ''} />
-                    <AvatarFallback style={{ background: '#4f46e5', color: '#fff', fontSize: 9 }}>
+                    <AvatarFallback style={{ background: '#2f5cff', color: '#fff', fontSize: 9 }}>
                       {dm.name[0]?.toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -414,7 +414,7 @@ export function Sidebar({ channels, dms, currentUser, workspaceName: initialWork
         >
           <Avatar className="h-7 w-7">
             <AvatarImage src={currentUser.avatarUrl ?? ''} />
-            <AvatarFallback style={{ background: '#4f46e5', color: '#fff', fontSize: 11 }}>
+            <AvatarFallback style={{ background: '#2f5cff', color: '#fff', fontSize: 11 }}>
               {currentUser.name[0]?.toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -660,7 +660,7 @@ function NewDmModal({ onClose, onStart }: { onClose: () => void; onStart: (userI
               >
                 <Avatar className="h-8 w-8 shrink-0">
                   <AvatarImage src={u.avatarUrl ?? ''} />
-                  <AvatarFallback style={{ background: '#4f46e5', color: '#fff', fontSize: 12 }}>
+                  <AvatarFallback style={{ background: '#2f5cff', color: '#fff', fontSize: 12 }}>
                     {u.name[0]?.toUpperCase()}
                   </AvatarFallback>
                 </Avatar>

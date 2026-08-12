@@ -88,7 +88,7 @@ export function PinsTab({ channelId, currentUserId }: Props) {
           <div className="flex items-center gap-2 mb-2 pr-6">
             <Avatar className="h-6 w-6 shrink-0">
               <AvatarImage src={pin.userAvatarUrl ?? ''} />
-              <AvatarFallback className="text-xs" style={{ background: '#4f46e5', color: '#fff' }}>
+              <AvatarFallback className="text-xs" style={{ background: '#2f5cff', color: '#fff' }}>
                 {pin.userName[0]?.toUpperCase() ?? '?'}
               </AvatarFallback>
             </Avatar>

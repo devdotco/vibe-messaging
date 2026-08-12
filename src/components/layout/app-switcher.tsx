@@ -1,11 +1,20 @@
 'use client';
 
 import Link from 'next/link';
+import {
+  Home,
+  MessageSquare,
+  CheckSquare,
+  Users,
+  TrendingUp,
+  Building2,
+  Bell,
+} from 'lucide-react';
 
 const PM_URL = process.env.NEXT_PUBLIC_PM_URL ?? 'https://pm.vb.co';
 const FINANCE_URL = process.env.NEXT_PUBLIC_FINANCE_URL ?? 'https://finance.vb.co';
 const CRM_URL = process.env.NEXT_PUBLIC_CRM_URL ?? 'https://crm.vb.co';
-const MARKETING_URL = process.env.NEXT_PUBLIC_MARKETING_URL ?? 'https://marketing.vb.co';
+const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? 'https://portal.vb.co';
 const SHELL_URL = process.env.NEXT_PUBLIC_SHELL_URL ?? 'https://app.vb.co';
 
 function AppIcon({
@@ -28,7 +37,6 @@ function AppIcon({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '16px',
     color: active ? 'white' : 'rgba(255,255,255,0.55)',
     background: active ? 'var(--accent)' : 'transparent',
     textDecoration: 'none',
@@ -92,55 +100,56 @@ export function AppSwitcher() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '15px',
-          fontWeight: 700,
-          color: 'white',
-          marginBottom: '8px',
           flexShrink: 0,
+          marginBottom: '8px',
+          overflow: 'hidden',
         }}
         title="ViBe"
       >
-        V
+        <svg width="22" height="16" viewBox="0 0 22 16" fill="none">
+          <text x="0" y="13" fontFamily="var(--font-geist-sans), system-ui, sans-serif" fontWeight="800" fontSize="13" fill="white">V</text>
+        </svg>
       </div>
 
       <div style={{ width: '20px', height: '1px', background: 'rgba(255,255,255,0.08)', marginBottom: '4px' }} />
 
+      {/* Home */}
+      <AppIcon href={SHELL_URL} title="ViBe Home" external>
+        <Home size={17} />
+      </AppIcon>
+
       {/* Messaging (active) */}
-      <AppIcon href="/" title="ViBe Messaging" active>
-        💬
+      <AppIcon href="/" title="ViBe Chat" active>
+        <MessageSquare size={17} />
       </AppIcon>
 
       {/* PM */}
       <AppIcon href={PM_URL} title="ViBe PM" external>
-        ✓
+        <CheckSquare size={17} />
+      </AppIcon>
+
+      {/* Portal */}
+      <AppIcon href={PORTAL_URL} title="ViBe Portal" external>
+        <Users size={17} />
       </AppIcon>
 
       {/* Finance */}
       <AppIcon href={FINANCE_URL} title="ViBe Finance" external>
-        $
+        <TrendingUp size={17} />
       </AppIcon>
 
       {/* CRM */}
       <AppIcon href={CRM_URL} title="ViBe CRM" external>
-        👥
-      </AppIcon>
-
-      {/* Marketing */}
-      <AppIcon href={MARKETING_URL} title="ViBe Marketing" external>
-        ⚡
-      </AppIcon>
-
-      {/* App shell */}
-      <AppIcon href={SHELL_URL} title="ViBe Home" external>
-        ⌂
+        <Building2 size={17} />
       </AppIcon>
 
       <div style={{ flex: 1 }} />
 
       <div style={{ width: '20px', height: '1px', background: 'rgba(255,255,255,0.08)', marginBottom: '4px' }} />
 
+      {/* Notifications */}
       <AppIcon href="/notifications" title="Notifications">
-        🔔
+        <Bell size={17} />
       </AppIcon>
     </div>
   );

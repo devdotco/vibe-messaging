@@ -104,7 +104,7 @@ export async function sendDmEmail(data: DmNotificationData) {
       <div style="border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:16px">
         <p style="color:#374151;margin:0">${data.messageText}</p>
       </div>
-      <a href="${data.dmUrl}" style="display:inline-block;background:#4f46e5;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600">Reply in ViBe Messaging</a>
+      <a href="${data.dmUrl}" style="display:inline-block;background:#2f5cff;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600">Reply in ViBe Messaging</a>
       <p style="color:#9ca3af;font-size:12px;margin-top:24px">Reply to this email to respond directly without logging in.</p>
     </div>`,
     replyTo
@@ -122,7 +122,7 @@ export async function sendMentionEmail(data: MentionNotificationData) {
       <div style="border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:16px">
         <p style="color:#374151;margin:0">${data.messageText}</p>
       </div>
-      <a href="${data.channelUrl}" style="display:inline-block;background:#4f46e5;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600">Open in ViBe Messaging</a>
+      <a href="${data.channelUrl}" style="display:inline-block;background:#2f5cff;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600">Open in ViBe Messaging</a>
       <p style="color:#9ca3af;font-size:12px;margin-top:24px">Reply to this email to respond in the channel without logging in.</p>
     </div>`,
     replyTo
