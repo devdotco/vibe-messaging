@@ -37,6 +37,7 @@ function AppIcon({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    fontSize: '16px',
     color: active ? 'white' : 'rgba(255,255,255,0.55)',
     background: active ? 'var(--accent)' : 'transparent',
     textDecoration: 'none',
@@ -61,7 +62,7 @@ function AppIcon({
 
   if (external) {
     return (
-      <a href={href} title={title} style={style} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
+      <a href={href} title={title} target="_blank" rel="noopener noreferrer" style={style} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
         {children}
       </a>
     );
