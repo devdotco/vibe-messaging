@@ -8,6 +8,7 @@ import {
   Users,
   TrendingUp,
   Building2,
+  Megaphone,
   Bell,
 } from 'lucide-react';
 
@@ -15,6 +16,7 @@ const PM_URL = process.env.NEXT_PUBLIC_PM_URL ?? 'https://pm.vb.co';
 const FINANCE_URL = process.env.NEXT_PUBLIC_FINANCE_URL ?? 'https://finance.vb.co';
 const CRM_URL = process.env.NEXT_PUBLIC_CRM_URL ?? 'https://crm.vb.co';
 const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? 'https://portal.vb.co';
+const MARKETING_URL = process.env.NEXT_PUBLIC_MARKETING_URL ?? 'https://marketing.vb.co';
 const SHELL_URL = process.env.NEXT_PUBLIC_SHELL_URL ?? 'https://app.vb.co';
 
 function AppIcon({
@@ -142,6 +144,11 @@ export function AppSwitcher() {
       {/* CRM */}
       <AppIcon href={CRM_URL} title="ViBe CRM" external>
         <Building2 size={17} />
+      </AppIcon>
+
+      {/* Marketing */}
+      <AppIcon href={MARKETING_URL} title="ViBe Marketing" external>
+        <Megaphone size={17} />
       </AppIcon>
 
       <div style={{ flex: 1 }} />
