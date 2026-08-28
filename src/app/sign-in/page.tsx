@@ -67,9 +67,28 @@ export default function SignInPage() {
             <h1 className="text-lg font-bold text-[var(--text-primary)] mb-1 text-center">
               ViBe Messaging
             </h1>
-            <p className="text-sm text-[var(--text-muted)] mb-6 text-center">
+            <p className="text-sm text-[var(--text-muted)] mb-5 text-center">
               Enter your email to receive a sign-in link.
             </p>
+
+            {/*
+              One click for anyone who has an app.vb.co account — the shell
+              mints a hand-off token and sends them back signed in. The
+              magic-link form stays the default, because plenty of people here
+              were invited to a channel by email and have no shell account.
+            */}
+            <a
+              href="https://app.vb.co/api/shell/auth/module-token?aud=messaging&next=%2F"
+              className="flex h-11 w-full items-center justify-center rounded-lg bg-[var(--accent)] text-sm font-semibold text-white no-underline"
+            >
+              Continue with ViBe
+            </a>
+
+            <div className="my-4 flex items-center gap-2 text-xs text-[var(--text-muted)]">
+              <span className="h-px flex-1 bg-[var(--border)]" />
+              or
+              <span className="h-px flex-1 bg-[var(--border)]" />
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-3">
               <input

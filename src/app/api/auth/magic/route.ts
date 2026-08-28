@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { users, sessions, channels, channelMembers } from '@/lib/db/schema/messaging';
 import { eq, and, or } from 'drizzle-orm';
 import crypto from 'crypto';
+import { COOKIE_NAME, sessionCookieOptions } from '@/lib/auth/session';
 import sgMail from '@sendgrid/mail';
 
 function hashToken(token: string) {
@@ -151,14 +152,7 @@ export async function GET(req: NextRequest) {
   const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'chat.vb.co';
   const proto = req.headers.get('x-forwarded-proto') ?? 'https';
   const res = NextResponse.redirect(new URL('/', `${proto}://${host}`));
-  res.cookies.set('__vibe_session', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    expires: expiresAt,
-    path: '/',
-    domain: process.env.COOKIE_DOMAIN ?? '.vb.co',
-  });
+  res.cookies.set(COOKIE_NAME, token, sessionCookieOptions());
 
   return res;
 }

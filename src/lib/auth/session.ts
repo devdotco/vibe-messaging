@@ -4,10 +4,55 @@ import { sessions, users } from '@/lib/db/schema/messaging';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 
-const COOKIE_NAME = '__vibe_session';
-// finance.vb.co is the canonical ViBe auth source — it issues __vibe_session
-// and exposes /api/auth/me for cross-app session validation.
+/**
+ * Chat's OWN session cookie.
+ *
+ * Deliberately not `__vibe_session`, and deliberately host-scoped. This app
+ * used to write its opaque session token under that name on domain `.vb.co` —
+ * the same name and domain the shell uses for its iron-session blob — so the
+ * two overwrote each other. Signing in here silently signed you out of
+ * app.vb.co and every other module.
+ *
+ * We still READ `__vibe_session` below, because it is how a shell session is
+ * recognised via finance's /api/auth/me. We just never write it any more.
+ * Same fix, and the same reasoning, as `__sdr_session` and `__vibe_pm_session`.
+ */
+export const COOKIE_NAME = '__vibe_chat_session';
+
+/** The suite-wide shell cookie. Read-only here — never written by this app. */
+export const SHELL_COOKIE_NAME = '__vibe_session';
+
+export const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+// finance.vb.co validates a shell session and exposes /api/auth/me. Kept as a
+// fallback so nobody who reaches Chat that way today loses access; the shell
+// hand-off at /api/auth/callback is the path new sessions take.
 const AUTH_URL = process.env.AUTH_URL ?? 'https://finance.vb.co';
+
+/**
+ * Cookie options for the session this app issues. No `domain`: host-scoped to
+ * chat.vb.co on purpose — a `.vb.co` cookie is what caused the collision.
+ */
+export function sessionCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    maxAge: SESSION_TTL_SECONDS,
+    path: '/',
+  };
+}
+
+/** Issue a session for a user, returning the raw token to set as a cookie. */
+export async function createSessionToken(userId: string): Promise<string> {
+  const token = crypto.randomBytes(32).toString('hex');
+  await db.insert(sessions).values({
+    userId,
+    tokenHash: hashToken(token),
+    expiresAt: new Date(Date.now() + SESSION_TTL_SECONDS * 1000),
+  });
+  return token;
+}
 
 function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -15,7 +60,9 @@ function hashToken(token: string): string {
 
 export async function getCurrentUser() {
   const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
+  // This app's own session first; the shell cookie second, so the finance
+  // validation path below still recognises people who arrive with one.
+  const token = cookieStore.get(COOKIE_NAME)?.value ?? cookieStore.get(SHELL_COOKIE_NAME)?.value;
   if (!token) return null;
 
   // 1. Local sessions table — fast path, covers repeat visits.

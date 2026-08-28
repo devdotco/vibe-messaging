@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { users, sessions, channels, channelMembers } from '@/lib/db/schema/messaging';
 import { eq, or, and } from 'drizzle-orm';
 import crypto from 'crypto';
+import { COOKIE_NAME, sessionCookieOptions } from '@/lib/auth/session';
 import { verifyMagicToken } from '../route';
 
 function hashToken(token: string) {
@@ -75,14 +76,7 @@ export async function GET(req: NextRequest) {
   })();
 
   const res = NextResponse.redirect(redirectUrl);
-  res.cookies.set('__vibe_session', sessionToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    expires: expiresAt,
-    path: '/',
-    domain: process.env.COOKIE_DOMAIN ?? '.vb.co',
-  });
+  res.cookies.set(COOKIE_NAME, sessionToken, sessionCookieOptions());
 
   return res;
 }
