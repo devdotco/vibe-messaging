@@ -32,7 +32,13 @@ export async function POST(req: NextRequest) {
   // messaging's TYPE_DECODE only knows c/d, so HMAC would fail on t/p.
   const typeCode = to.match(/reply\+([a-z])-/)?.[1];
   if (typeCode === 't' || typeCode === 'p') {
-    const pmRes = await fetch('https://pm.vb.co/api/webhooks/email/inbound', {
+    // PM_MODULE_URL, not a literal. This was hardcoded to https://pm.vb.co,
+    // which survives only while that host serves the app directly: a redirect
+    // to pm.erp.io turns this POST into a bodyless GET (301/302 downgrade the
+    // method), and every email reply to a task is dropped with a 200 logged
+    // here and nothing arriving at PM.
+    const pmBase = process.env.PM_MODULE_URL ?? 'https://pm.erp.io';
+    const pmRes = await fetch(`${pmBase}/api/webhooks/email/inbound`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
