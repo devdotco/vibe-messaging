@@ -27,7 +27,7 @@ export interface ClaudeContext {
 const PM_TOOLS: Anthropic.Tool[] = [
   {
     name: 'create_task',
-    description: 'Create a task in ViBe project management. Use when the user asks to create, log, or track something as a task.',
+    description: 'Create a task in erp.io project management. Use when the user asks to create, log, or track something as a task.',
     input_schema: {
       type: 'object' as const,
       properties: {

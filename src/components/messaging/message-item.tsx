@@ -112,8 +112,8 @@ export function MessageItem({ message, user, currentUserId, channelId, onReact, 
 
   // Deterministic avatar color from userId
   function userColor(id?: string) {
-    if (!id) return '#2f5cff';
-    const colors = ['#2f5cff','#0891b2','#059669','#d97706','#dc2626','#7c3aed','#db2777'];
+    if (!id) return '#2563eb';
+    const colors = ['#2563eb','#0891b2','#059669','#d97706','#dc2626','#7c3aed','#db2777'];
     let h = 0;
     for (let i = 0; i < id.length; i++) h = id.charCodeAt(i) + ((h << 5) - h);
     return colors[Math.abs(h) % colors.length];

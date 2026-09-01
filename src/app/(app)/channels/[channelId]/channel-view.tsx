@@ -443,7 +443,7 @@ function CreateTaskModal({ content, channelId, linkedProjects, currentUser, onCl
             </div>
           ) : (
             <p className="text-sm text-[var(--text-muted)] bg-[var(--panel-hover)] rounded-lg px-3 py-2">
-              No projects linked to this channel. Link a project in Channel Settings → Linked Projects to send tasks directly. You&apos;ll be redirected to ViBe PM.
+              No projects linked to this channel. Link a project in Channel Settings → Linked Projects to send tasks directly. You&apos;ll be redirected to erp.io PM.
             </p>
           )}
         </div>

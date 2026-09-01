@@ -44,7 +44,7 @@ export default function SignInPage() {
       >
         <div
           className="w-10 h-10 rounded-xl mx-auto mb-4 flex items-center justify-center text-white font-bold text-lg"
-          style={{ background: 'linear-gradient(135deg, #2f5cff, #6d4be0)' }}
+          style={{ background: 'linear-gradient(135deg, #2563eb, #6d4be0)' }}
         >
           V
         </div>
@@ -65,7 +65,7 @@ export default function SignInPage() {
         ) : (
           <>
             <h1 className="text-lg font-bold text-[var(--text-primary)] mb-1 text-center">
-              ViBe Messaging
+              erp.io Messaging
             </h1>
             <p className="text-sm text-[var(--text-muted)] mb-5 text-center">
               Enter your email to receive a sign-in link.
@@ -81,7 +81,7 @@ export default function SignInPage() {
               href="https://app.vb.co/api/shell/auth/module-token?aud=messaging&next=%2F"
               className="flex h-11 w-full items-center justify-center rounded-lg bg-[var(--accent)] text-sm font-semibold text-white no-underline"
             >
-              Continue with ViBe
+              Continue with erp.io
             </a>
 
             <div className="my-4 flex items-center gap-2 text-xs text-[var(--text-muted)]">

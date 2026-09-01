@@ -6,7 +6,7 @@ function parseFrom(s: string): { email: string; name?: string } {
   const m = s.match(/^(.+?)\s*<([^>]+)>$/);
   return m ? { name: m[1].trim(), email: m[2].trim() } : { email: s.trim() };
 }
-const FROM = parseFrom(process.env.EMAIL_FROM ?? 'ViBe Messaging <notifications@vb.co>');
+const FROM = parseFrom(process.env.EMAIL_FROM ?? 'erp.io Messaging <notifications@vb.co>');
 const REPLY_DOMAIN = process.env.EMAIL_REPLY_DOMAIN ?? 'reply.vb.co';
 const REPLY_SECRET = process.env.EMAIL_REPLY_SECRET ?? 'dev-secret';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://chat.vb.co';
@@ -104,7 +104,7 @@ export async function sendDmEmail(data: DmNotificationData) {
       <div style="border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:16px">
         <p style="color:#374151;margin:0">${data.messageText}</p>
       </div>
-      <a href="${data.dmUrl}" style="display:inline-block;background:#2f5cff;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600">Reply in ViBe Messaging</a>
+      <a href="${data.dmUrl}" style="display:inline-block;background:#2563eb;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600">Reply in erp.io Messaging</a>
       <p style="color:#9ca3af;font-size:12px;margin-top:24px">Reply to this email to respond directly without logging in.</p>
     </div>`,
     replyTo
@@ -122,7 +122,7 @@ export async function sendMentionEmail(data: MentionNotificationData) {
       <div style="border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:16px">
         <p style="color:#374151;margin:0">${data.messageText}</p>
       </div>
-      <a href="${data.channelUrl}" style="display:inline-block;background:#2f5cff;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600">Open in ViBe Messaging</a>
+      <a href="${data.channelUrl}" style="display:inline-block;background:#2563eb;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600">Open in erp.io Messaging</a>
       <p style="color:#9ca3af;font-size:12px;margin-top:24px">Reply to this email to respond in the channel without logging in.</p>
     </div>`,
     replyTo

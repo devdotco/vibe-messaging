@@ -299,7 +299,7 @@ export function RichComposer({
               >
                 <span
                   className="h-6 w-6 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                  style={{ background: u.id === 'claude' ? 'linear-gradient(135deg, #6d4be0, #9370f8)' : '#2f5cff' }}
+                  style={{ background: u.id === 'claude' ? 'linear-gradient(135deg, #6d4be0, #9370f8)' : '#2563eb' }}
                 >
                   {u.name[0]?.toUpperCase()}
                 </span>

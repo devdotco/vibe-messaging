@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
   const verifyUrl = `${proto}://${host}/api/auth/magic/verify?token=${encodeURIComponent(token)}`;
 
   sgMail.setApiKey(apiKey);
-  const fromRaw = process.env.EMAIL_FROM ?? 'ViBe Messaging <notifications@vb.co>';
+  const fromRaw = process.env.EMAIL_FROM ?? 'erp.io Messaging <notifications@vb.co>';
   const fromMatch = fromRaw.match(/^(.+?)\s*<([^>]+)>$/);
   const from = fromMatch
     ? { name: fromMatch[1].trim(), email: fromMatch[2].trim() }
@@ -78,13 +78,13 @@ export async function POST(req: NextRequest) {
     await sgMail.send({
       from,
       to: email,
-      subject: 'Your ViBe Messaging sign-in link',
+      subject: 'Your erp.io Messaging sign-in link',
       html: `
         <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
-          <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#2f5cff,#6d4be0);display:inline-flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:18px;margin-bottom:16px">V</div>
-          <h1 style="font-size:20px;margin:0 0 8px">Sign in to ViBe Messaging</h1>
+          <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#2563eb,#6d4be0);display:inline-flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:18px;margin-bottom:16px">V</div>
+          <h1 style="font-size:20px;margin:0 0 8px">Sign in to erp.io Messaging</h1>
           <p style="color:#6b7280;margin:0 0 24px">Click the button below to sign in. This link expires in 1 hour.</p>
-          <a href="${verifyUrl}" style="display:inline-block;background:#2f5cff;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">Sign in to ViBe Messaging</a>
+          <a href="${verifyUrl}" style="display:inline-block;background:#2563eb;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">Sign in to erp.io Messaging</a>
           <p style="color:#9ca3af;font-size:12px;margin-top:24px">If you didn't request this, you can safely ignore it.</p>
         </div>
       `,
