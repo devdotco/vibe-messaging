@@ -16,7 +16,7 @@ import { jwtVerify, createRemoteJWKSet, importSPKI, type JWTPayload } from 'jose
 
 export const AUDIENCE = 'messaging' as const;
 const ALG = 'EdDSA';
-const ISSUER_DEFAULT = 'https://app.vb.co';
+const SHELL_URL_DEFAULT = 'https://app.vb.co';
 
 export interface ShellIdentity {
   shellUserId: string;
@@ -27,7 +27,29 @@ export interface ShellIdentity {
 }
 
 export function shellUrl(): string {
-  return (process.env.SHELL_URL ?? ISSUER_DEFAULT).replace(/\/$/, '');
+  return (process.env.SHELL_URL ?? SHELL_URL_DEFAULT).replace(/\/$/, '');
+}
+
+/**
+ * The issuer named in the token, which is NOT where the shell is served from.
+ *
+ * The shell stamps a fixed `iss` deliberately: it is a stable identity for the
+ * signer, chosen so that moving the shell to another host does not invalidate
+ * every token in flight. Verifying `iss` against SHELL_URL conflates the two,
+ * and the two were the same string until the estate moved to erp.io. Every
+ * hand-off then failed with `unexpected "iss" claim value`, this module bounced
+ * the visitor back to its /sign-in, /sign-in sent them to the shell, and the
+ * shell sent them straight back — which is what portal, crm, sign and canvas
+ * did the day SHELL_URL was pointed at app.erp.io.
+ *
+ * Separate settings now, because they answer different questions. SHELL_URL is
+ * an address: where to send a browser, where to fetch the public keys.
+ * SHELL_TOKEN_ISSUER is a name: who signed this.
+ */
+const TOKEN_ISSUER_DEFAULT = 'https://app.vb.co';
+
+export function tokenIssuer(): string {
+  return (process.env.SHELL_TOKEN_ISSUER ?? TOKEN_ISSUER_DEFAULT).replace(/\/$/, '');
 }
 
 let remoteJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
@@ -64,7 +86,7 @@ export async function verifyModuleToken(token: string): Promise<ShellIdentity> {
   const key = await verificationKey();
 
   const { payload } = await jwtVerify(token, key as Parameters<typeof jwtVerify>[1], {
-    issuer: shellUrl(),
+    issuer: tokenIssuer(),
     audience: AUDIENCE,
     algorithms: [ALG],
     clockTolerance: 5,
