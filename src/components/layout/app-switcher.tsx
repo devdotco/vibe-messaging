@@ -10,6 +10,8 @@ import {
   Building2,
   Megaphone,
   Bell,
+  Phone,
+  LogOut
 } from 'lucide-react';
 
 const PM_URL = process.env.NEXT_PUBLIC_PM_URL ?? 'https://pm.vb.co';
@@ -18,6 +20,9 @@ const CRM_URL = process.env.NEXT_PUBLIC_CRM_URL ?? 'https://crm.vb.co';
 const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL ?? 'https://portal.vb.co';
 const MARKETING_URL = process.env.NEXT_PUBLIC_MARKETING_URL ?? 'https://marketing.vb.co';
 const SHELL_URL = process.env.NEXT_PUBLIC_SHELL_URL ?? 'https://app.vb.co';
+// Renamed from SDR to Phony (2026-09-03). The env key stays NEXT_PUBLIC_SDR_URL
+// because that is the name the shell and every other module already use.
+const PHONY_URL = process.env.NEXT_PUBLIC_SDR_URL ?? 'https://phony.erp.io';
 
 function AppIcon({
   href,
@@ -160,6 +165,11 @@ export function AppSwitcher() {
         <Megaphone size={17} />
       </AppIcon>
 
+      {/* Phony */}
+      <AppIcon href={PHONY_URL} title="Phony" external>
+        <Phone size={17} />
+      </AppIcon>
+
       <div style={{ flex: 1 }} />
 
       <div style={{ width: '20px', height: '1px', background: 'rgba(255,255,255,0.08)', marginBottom: '4px' }} />
@@ -168,6 +178,12 @@ export function AppSwitcher() {
       <AppIcon href="/notifications" title="Notifications">
         <Bell size={17} />
       </AppIcon>
+      {/* Sign out. Pinned last so it sits in the same place in every module,
+          and pointed at the shell, which owns the session. */}
+      <AppIcon href={`${SHELL_URL}/sign-out`} title="Sign out of erp.io" external>
+        <LogOut size={17} />
+      </AppIcon>
+
     </div>
   );
 }
