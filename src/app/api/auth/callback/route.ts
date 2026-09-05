@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema/messaging';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { verifyModuleToken, shellSignInUrl, type ShellIdentity } from '@/lib/auth/module-token';
 import { createSessionToken, sessionCookieOptions, COOKIE_NAME } from '@/lib/auth/session';
 
@@ -36,12 +36,36 @@ function publicOrigin(req: NextRequest): string {
 }
 
 /**
- * Find this person in Chat, or create them. Adopt-by-email: someone added to a
- * channel by address before they ever signed in keeps that same account rather
- * than getting a duplicate.
+ * Find this person in Chat WITHIN THE ORGANIZATION THEY ARRIVED FROM, or
+ * create them there.
+ *
+ * Matched on the pair, never on email alone. Email-only lookup is what made
+ * this app effectively single-tenant: it returned whichever row existed first
+ * for that address and handed back its `org_id` — the one written the very
+ * first time that person signed in — silently discarding the organization they
+ * had actually arrived as. Someone who already had an account here from our own
+ * internal workspace kept it when they signed in from a brand-new one, and read
+ * internal channels with no error raised anywhere.
+ *
+ * Adopt-by-email still works as intended: someone added to a channel by address
+ * before they ever signed in keeps that account, because they were added to it
+ * inside an organization too. Somebody who belongs to two organizations now
+ * gets a row in each, which is correct — in this app they are two different
+ * members with two different sets of channels.
  */
 async function mirrorPrincipal(identity: ShellIdentity) {
-  const [existing] = await db.select().from(users).where(eq(users.email, identity.email)).limit(1);
+  // Refused BEFORE the lookup. A token carrying no org cannot be scoped to one,
+  // and falling through to an unscoped query is exactly the bug being fixed.
+  if (!identity.shellOrgId) {
+    throw new Error('Module token carries no organization; refusing to sign anyone in');
+  }
+  const orgId = identity.shellOrgId;
+
+  const [existing] = await db
+    .select()
+    .from(users)
+    .where(and(eq(users.email, identity.email), eq(users.orgId, orgId)))
+    .limit(1);
 
   if (existing) {
     if (identity.fullName && existing.name !== identity.fullName) {
@@ -50,14 +74,10 @@ async function mirrorPrincipal(identity: ShellIdentity) {
     return existing;
   }
 
-  if (!identity.shellOrgId) {
-    throw new Error('Module token carries no organisation; refusing to create a user');
-  }
-
   const [created] = await db
     .insert(users)
     .values({
-      orgId: identity.shellOrgId,
+      orgId,
       email: identity.email,
       name: identity.fullName || identity.email,
       status: 'active',
