@@ -18,42 +18,47 @@ export function proxy(req: NextRequest) {
   // still validate. Signed-out visitors go to the LOCAL sign-in, never
   // straight to app.vb.co: plenty of people here were invited to a channel by
   // email and have no shell account to be handed off from.
-  const token =
-    req.cookies.get(COOKIE_NAME)?.value ?? req.cookies.get(SHELL_COOKIE_NAME)?.value;
-  if (!token) {
+  /*
+   * The module's OWN session decides. The shell cookie used to be accepted here
+   * as if it were one, which let the request through the proxy while the page
+   * itself could not validate it — so Chat bounced to its sign-in anyway, and
+   * did it after the navigation rather than before.
+   */
+  const own = req.cookies.get(COOKIE_NAME)?.value;
+  if (!own) {
+    /*
+     * FAST PATH. Signed in to the suite but not yet to Chat: go straight
+     * through the hand-off rather than showing a local sign-in.
+     *
+     * Only possible since the modules were collapsed onto one origin — the
+     * shell's cookie is scoped to app.erp.io, so it now arrives with this
+     * request. On chat.erp.io it never did.
+     *
+     * `next` is the UNMOUNTED path; the callback adds the mount back.
+     */
+    if (req.cookies.get(SHELL_COOKIE_NAME)?.value) {
+      const shell = (process.env.SHELL_URL ?? 'https://app.erp.io').replace(/\/$/, '');
+      const handoff = new URL(`${shell}/api/shell/auth/module-token`);
+      handoff.searchParams.set('aud', 'messaging');
+      handoff.searchParams.set('next', `${req.nextUrl.pathname}${req.nextUrl.search}`);
+      return NextResponse.redirect(handoff);
+    }
+
+    /*
+     * The local sign-in stands for anyone with no shell session: plenty of
+     * people here were invited to a channel by email and have no erp.io
+     * account to be handed off from.
+     */
     const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'app.erp.io';
     const proto = req.headers.get('x-forwarded-proto') ?? 'https';
     // withBase: Next hands us the path with the mount stripped, so without it
     // this returns people to the SHELL's page after signing in.
     const publicUrl = `${proto}://${host}${withBase(path)}${req.nextUrl.search}`;
-  /*
-   * FAST PATH. Signed in to the suite but not yet to this module: go straight
-   * through the hand-off rather than showing a local sign-in.
-   *
-   * Only possible since the modules were collapsed onto one origin — the
-   * shell's cookie is scoped to app.erp.io, so it now arrives with this
-   * request. On the old subdomain it never did, which is why every module
-   * switch had to start from the shell and cost three round trips.
-   *
-   * The local sign-in still stands for anyone with no shell session at all —
-   * people invited straight to a board or a document, who have no erp.io
-   * account to be handed off from.
-   *
-   * `next` is the UNMOUNTED path: the module's callback adds the mount back
-   * with withBase, and sign-erp's withBase is deliberately not idempotent.
-   */
-  if (req.cookies.get("__vibe_session")?.value) {
-    const shell = (process.env.SHELL_URL ?? "https://app.erp.io").replace(/\/$/, "");
-    const handoff = new URL(`${shell}/api/shell/auth/module-token`);
-    handoff.searchParams.set("aud", "messaging");
-    handoff.searchParams.set("next", `${req.nextUrl.pathname}${req.nextUrl.search}`);
-    return NextResponse.redirect(handoff);
-  }
-
     return NextResponse.redirect(
       new URL(withBase(`/sign-in?next=${encodeURIComponent(publicUrl)}`), `${proto}://${host}`)
     );
   }
+
   return NextResponse.next();
 }
 
