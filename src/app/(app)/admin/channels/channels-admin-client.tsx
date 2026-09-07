@@ -1,6 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { Pencil, Trash2, Check, X } from 'lucide-react';
+import { apiFetch } from '@/lib/base-path';
 
 const CHANNEL_TYPES = ['public', 'private', 'announcement'] as const;
 type ChannelType = typeof CHANNEL_TYPES[number];
@@ -32,7 +33,7 @@ export function ChannelsAdminClient({ initialChannels }: Props) {
 
   async function handleClaudeToggle(channelId: string, current: boolean | null) {
     const claudeEnabled = !current;
-    const res = await fetch(`/api/messaging/admin/channels/${channelId}`, {
+    const res = await apiFetch(`/api/messaging/admin/channels/${channelId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ claudeEnabled }),
@@ -51,7 +52,7 @@ export function ChannelsAdminClient({ initialChannels }: Props) {
   }
 
   async function saveEdit(channelId: string) {
-    const res = await fetch(`/api/messaging/admin/channels/${channelId}`, {
+    const res = await apiFetch(`/api/messaging/admin/channels/${channelId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: editName, description: editDescription || null }),
@@ -67,7 +68,7 @@ export function ChannelsAdminClient({ initialChannels }: Props) {
   }
 
   async function handleDelete(channelId: string) {
-    const res = await fetch(`/api/messaging/admin/channels/${channelId}`, { method: 'DELETE' });
+    const res = await apiFetch(`/api/messaging/admin/channels/${channelId}`, { method: 'DELETE' });
     if (res.ok) {
       setChannelList((prev) =>
         prev.map((c) => (c.id === channelId ? { ...c, isArchived: true } : c)),
@@ -261,7 +262,7 @@ function CreateChannelModal({
     setLoading(true);
     setError('');
 
-    const res = await fetch('/api/messaging/admin/channels', {
+    const res = await apiFetch('/api/messaging/admin/channels', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, description: description || undefined, type, claudeEnabled }),

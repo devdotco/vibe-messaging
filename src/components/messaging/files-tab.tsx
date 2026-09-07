@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { formatTime } from '@/lib/utils';
 import type { FileEntry } from '@/app/api/messaging/channels/[channelId]/files/route';
+import { apiFetch } from '@/lib/base-path';
 
 interface Props {
   channelId: string;
@@ -31,7 +32,7 @@ export function FilesTab({ channelId }: Props) {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/messaging/channels/${channelId}/files`)
+    apiFetch(`/api/messaging/channels/${channelId}/files`)
       .then((r) => r.json())
       .then((data: FileEntry[]) => setFiles(data))
       .catch(() => setFiles([]))

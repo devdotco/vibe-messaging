@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ChannelListSkeleton } from '@/components/ui/Skeleton';
 import { cn } from '@/lib/utils';
 import type { Channel, User } from '@/lib/db/schema/messaging';
+import { apiFetch } from '@/lib/base-path';
 
 export interface DmEntry {
   conversationId: string;
@@ -43,7 +44,7 @@ function RenameWorkspaceModal({ current, onClose, onSave }: { current: string; o
     e.preventDefault();
     if (!name.trim() || name.trim() === current) { onClose(); return; }
     setSaving(true);
-    await fetch('/api/messaging/workspace', {
+    await apiFetch('/api/messaging/workspace', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: name.trim() }),
@@ -131,7 +132,7 @@ export function Sidebar({ channels, dms, currentUser, workspaceName: initialWork
   }
 
   async function handleNewDm(userId: string) {
-    const res = await fetch('/api/messaging/dms', {
+    const res = await apiFetch('/api/messaging/dms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ participantIds: [userId] }),
@@ -142,7 +143,7 @@ export function Sidebar({ channels, dms, currentUser, workspaceName: initialWork
   }
 
   async function saveStatus() {
-    await fetch('/api/messaging/presence', {
+    await apiFetch('/api/messaging/presence', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ statusMessage }),
@@ -609,7 +610,7 @@ function NewDmModal({ onClose, onStart }: { onClose: () => void; onStart: (userI
 
   useEffect(() => {
     setLoading(true);
-    fetch('/api/messaging/users')
+    apiFetch('/api/messaging/users')
       .then((r) => r.json())
       .then((data: { user: User }[]) => {
         setOrgUsers(data.map((d) => d.user));

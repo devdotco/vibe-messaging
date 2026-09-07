@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatTime } from '@/lib/utils';
 import type { PinnedMessage } from '@/app/api/messaging/channels/[channelId]/pins/route';
+import { apiFetch } from '@/lib/base-path';
 
 interface Props {
   channelId: string;
@@ -16,7 +17,7 @@ export function PinsTab({ channelId, currentUserId }: Props) {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/messaging/channels/${channelId}/pins`)
+    apiFetch(`/api/messaging/channels/${channelId}/pins`)
       .then((r) => r.json())
       .then((data: PinnedMessage[]) => setPins(data))
       .catch(() => setPins([]))
@@ -29,12 +30,12 @@ export function PinsTab({ channelId, currentUserId }: Props) {
     setUnpinning((prev) => new Set(prev).add(messageId));
 
     try {
-      await fetch(`/api/messaging/channels/${channelId}/messages/${messageId}/pin`, {
+      await apiFetch(`/api/messaging/channels/${channelId}/messages/${messageId}/pin`, {
         method: 'DELETE',
       });
     } catch {
       // If it fails, re-fetch to restore state
-      fetch(`/api/messaging/channels/${channelId}/pins`)
+      apiFetch(`/api/messaging/channels/${channelId}/pins`)
         .then((r) => r.json())
         .then((data: PinnedMessage[]) => setPins(data))
         .catch(() => {});

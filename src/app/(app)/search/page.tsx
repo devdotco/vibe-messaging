@@ -3,6 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Search, Hash, Clock } from 'lucide-react';
 import type { Message, Channel } from '@/lib/db/schema/messaging';
+import { apiFetch } from '@/lib/base-path';
 
 type Tab = 'messages' | 'channels' | 'files';
 
@@ -41,7 +42,7 @@ export default function SearchPage() {
     if (q.length < 2) { setResults([]); return; }
     debounceRef.current = setTimeout(() => {
       setLoading(true);
-      fetch(`/api/messaging/search?q=${encodeURIComponent(q)}&type=${tab}`)
+      apiFetch(`/api/messaging/search?q=${encodeURIComponent(q)}&type=${tab}`)
         .then((r) => r.json())
         .then((data) => { setResults(Array.isArray(data) ? data : []); setLoading(false); });
     }, 300);

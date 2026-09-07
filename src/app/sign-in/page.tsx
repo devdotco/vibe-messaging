@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
+import { apiFetch } from '@/lib/base-path';
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
@@ -15,7 +16,7 @@ export default function SignInPage() {
     const next = new URLSearchParams(window.location.search).get('next') ?? '/';
 
     try {
-      const res = await fetch('/api/auth/magic', {
+      const res = await apiFetch('/api/auth/magic', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), next }),

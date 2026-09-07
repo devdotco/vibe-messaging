@@ -8,6 +8,7 @@ import { formatTime, formatCost, cn } from '@/lib/utils';
 import { linkifyHtml } from '@/lib/linkify';
 import type { Message, User } from '@/lib/db/schema/messaging';
 import type { ReactionGroup, AttachmentRow } from '@/app/api/messaging/channels/[channelId]/messages/route';
+import { apiFetch } from '@/lib/base-path';
 
 export interface MessageWithReactions extends Message {
   reactions?: ReactionGroup[];
@@ -75,7 +76,7 @@ export function MessageItem({ message, user, currentUserId, channelId, onReact, 
     if (!editContent.trim() || saving) return;
     setSaving(true);
     try {
-      await fetch(`/api/messaging/messages/${message.id}`, {
+      await apiFetch(`/api/messaging/messages/${message.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: editContent }),
@@ -93,7 +94,7 @@ export function MessageItem({ message, user, currentUserId, channelId, onReact, 
   }
 
   async function handleRemoveReaction(emoji: string) {
-    await fetch(`/api/messaging/messages/${message.id}/reactions/${encodeURIComponent(emoji)}`, { method: 'DELETE' });
+    await apiFetch(`/api/messaging/messages/${message.id}/reactions/${encodeURIComponent(emoji)}`, { method: 'DELETE' });
   }
 
   async function handlePinToggle() {
@@ -101,7 +102,7 @@ export function MessageItem({ message, user, currentUserId, channelId, onReact, 
     setPinning(true);
     try {
       const method = isPinned ? 'DELETE' : 'POST';
-      await fetch(`/api/messaging/channels/${channelId}/messages/${message.id}/pin`, { method });
+      await apiFetch(`/api/messaging/channels/${channelId}/messages/${message.id}/pin`, { method });
       onPinToggle?.(message.id, !isPinned);
     } finally {
       setPinning(false);

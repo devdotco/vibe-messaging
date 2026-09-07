@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { sessions, users } from '@/lib/db/schema/messaging';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
+import { BASE_PATH } from '@/lib/base-path';
 
 /**
  * Chat's OWN session cookie.
@@ -39,7 +40,9 @@ export function sessionCookieOptions() {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax' as const,
     maxAge: SESSION_TTL_SECONDS,
-    path: '/',
+    // The MOUNT, not '/': modules share the app.erp.io origin now, and
+    // sign-out deletes by path.
+    path: BASE_PATH,
   };
 }
 

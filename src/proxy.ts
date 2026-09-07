@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { COOKIE_NAME, SHELL_COOKIE_NAME } from '@/lib/auth/session';
+import { stripBase, withBase } from '@/lib/base-path';
 
 const PUBLIC = ['/sign-in', '/api/webhooks', '/api/webhooks/email/inbound', '/api/health', '/api/auth', '/api/messaging/webhooks'];
 
 export function proxy(req: NextRequest) {
-  const isPublic = PUBLIC.some(p => req.nextUrl.pathname.startsWith(p));
+  /*
+   * Matched WITHOUT the mount. `/chat/sign-in` does not start with `/sign-in`,
+   * so every public path would have become private at once — including the
+   * auth routes, which would have bounced the hand-off token into a sign-in
+   * that itself required signing in.
+   */
+  const path = stripBase(req.nextUrl.pathname);
+  const isPublic = PUBLIC.some(p => path.startsWith(p));
   if (isPublic) return NextResponse.next();
   // Either this app's own session or a shell cookie the finance path can
   // still validate. Signed-out visitors go to the LOCAL sign-in, never
@@ -15,9 +23,11 @@ export function proxy(req: NextRequest) {
   if (!token) {
     const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'chat.vb.co';
     const proto = req.headers.get('x-forwarded-proto') ?? 'https';
-    const publicUrl = `${proto}://${host}${req.nextUrl.pathname}${req.nextUrl.search}`;
+    // withBase: Next hands us the path with the mount stripped, so without it
+    // this returns people to the SHELL's page after signing in.
+    const publicUrl = `${proto}://${host}${withBase(path)}${req.nextUrl.search}`;
     return NextResponse.redirect(
-      new URL(`/sign-in?next=${encodeURIComponent(publicUrl)}`, `${proto}://${host}`)
+      new URL(withBase(`/sign-in?next=${encodeURIComponent(publicUrl)}`), `${proto}://${host}`)
     );
   }
   return NextResponse.next();

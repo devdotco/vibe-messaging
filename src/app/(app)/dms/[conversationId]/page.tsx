@@ -7,6 +7,7 @@ import { getPusherClient } from '@/lib/pusher/client';
 import { playMessageSound } from '@/lib/sounds';
 import type { MessageWithReactions } from '@/components/messaging/message-item';
 import type { User } from '@/lib/db/schema/messaging';
+import { apiFetch } from '@/lib/base-path';
 
 export default function DmPage() {
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -17,16 +18,16 @@ export default function DmPage() {
   const [otherUser, setOtherUser] = useState<User | null>(null);
 
   useEffect(() => {
-    fetch('/api/messaging/users/me').then((r) => r.json()).then((me: User) => {
+    apiFetch('/api/messaging/users/me').then((r) => r.json()).then((me: User) => {
       setOrgId(me.orgId);
       setCurrentUserId(me.id);
     });
 
-    fetch(`/api/messaging/dms/${conversationId}/messages`)
+    apiFetch(`/api/messaging/dms/${conversationId}/messages`)
       .then((r) => r.json())
       .then((data: MessageWithReactions[]) => setMessages(data.map((m) => ({ ...m, reactions: m.reactions ?? [] }))));
 
-    fetch('/api/messaging/users')
+    apiFetch('/api/messaging/users')
       .then((r) => r.json())
       .then((data: { user: User }[]) => {
         const map = Object.fromEntries(data.map(({ user }) => [user.id, user]));
@@ -59,7 +60,7 @@ export default function DmPage() {
   }, [conversationId, orgId, currentUserId]);
 
   async function handleSend(content: string) {
-    await fetch(`/api/messaging/dms/${conversationId}/messages`, {
+    await apiFetch(`/api/messaging/dms/${conversationId}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content }),

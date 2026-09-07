@@ -5,6 +5,7 @@ import { eq, or, and } from 'drizzle-orm';
 import crypto from 'crypto';
 import { COOKIE_NAME, sessionCookieOptions } from '@/lib/auth/session';
 import { verifyMagicToken } from '../route';
+import { withBase } from '@/lib/base-path';
 
 function hashToken(token: string) {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -15,12 +16,12 @@ export async function GET(req: NextRequest) {
   const rawToken = searchParams.get('token');
 
   if (!rawToken) {
-    return NextResponse.redirect(new URL('/sign-in?error=missing', req.url));
+    return NextResponse.redirect(new URL(withBase('/sign-in?error=missing'), req.url));
   }
 
   const parsed = verifyMagicToken(rawToken);
   if (!parsed) {
-    return NextResponse.redirect(new URL('/sign-in?error=invalid', req.url));
+    return NextResponse.redirect(new URL(withBase('/sign-in?error=invalid'), req.url));
   }
 
   const { email, next } = parsed;
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
     .limit(1);
 
   if (!user) {
-    return NextResponse.redirect(new URL('/sign-in?error=notfound', req.url));
+    return NextResponse.redirect(new URL(withBase('/sign-in?error=notfound'), req.url));
   }
 
   // Auto-join default channels

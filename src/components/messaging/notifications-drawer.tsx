@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Bell, CheckCheck, MessageSquare, AtSign } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { Notification } from '@/lib/db/schema/messaging';
+import { apiFetch } from '@/lib/base-path';
 
 interface Props {
   onClose: () => void;
@@ -31,19 +32,19 @@ export function NotificationsDrawer({ onClose }: Props) {
   const router = useRouter();
 
   useEffect(() => {
-    fetch('/api/messaging/notifications')
+    apiFetch('/api/messaging/notifications')
       .then((r) => r.json())
       .then((data) => { setNotifications(data); setLoading(false); });
   }, []);
 
   async function markAllRead() {
-    await fetch('/api/messaging/notifications', { method: 'PATCH' });
+    await apiFetch('/api/messaging/notifications', { method: 'PATCH' });
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   }
 
   async function markOneRead(id: string) {
     setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));
-    await fetch(`/api/messaging/notifications`, { method: 'PATCH' });
+    await apiFetch(`/api/messaging/notifications`, { method: 'PATCH' });
   }
 
   function handleNavigate(n: Notification) {

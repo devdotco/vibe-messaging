@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useTransition } from 'react';
+import { apiFetch } from '@/lib/base-path';
 
 const ROLES = [
   'PLATFORM_ADMIN',
@@ -38,7 +39,7 @@ export function UsersAdminClient({ initialUsers, currentUserId }: Props) {
   const [, startTransition] = useTransition();
 
   async function handleRoleChange(userId: string, role: string) {
-    const res = await fetch(`/api/messaging/admin/users/${userId}`, {
+    const res = await apiFetch(`/api/messaging/admin/users/${userId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role }),
@@ -51,7 +52,7 @@ export function UsersAdminClient({ initialUsers, currentUserId }: Props) {
 
   async function handleStatusToggle(userId: string, currentStatus: string) {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-    const res = await fetch(`/api/messaging/admin/users/${userId}`, {
+    const res = await apiFetch(`/api/messaging/admin/users/${userId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus }),
@@ -62,7 +63,7 @@ export function UsersAdminClient({ initialUsers, currentUserId }: Props) {
   }
 
   async function handleDelete(userId: string) {
-    const res = await fetch(`/api/messaging/admin/users/${userId}`, { method: 'DELETE' });
+    const res = await apiFetch(`/api/messaging/admin/users/${userId}`, { method: 'DELETE' });
     if (res.ok) {
       setUsers((prev) => prev.filter((u) => u.id !== userId));
     }
@@ -220,7 +221,7 @@ function InviteModal({
     setLoading(true);
     setError('');
 
-    const res = await fetch('/api/messaging/admin/users', {
+    const res = await apiFetch('/api/messaging/admin/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, role, orgId: 'platform_default' }),

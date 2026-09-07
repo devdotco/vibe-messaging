@@ -5,6 +5,7 @@ import { eq, and, or } from 'drizzle-orm';
 import crypto from 'crypto';
 import { COOKIE_NAME, sessionCookieOptions } from '@/lib/auth/session';
 import sgMail from '@sendgrid/mail';
+import { withBase } from '@/lib/base-path';
 
 function hashToken(token: string) {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -151,7 +152,7 @@ export async function GET(req: NextRequest) {
 
   const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'chat.vb.co';
   const proto = req.headers.get('x-forwarded-proto') ?? 'https';
-  const res = NextResponse.redirect(new URL('/', `${proto}://${host}`));
+  const res = NextResponse.redirect(new URL(withBase('/'), `${proto}://${host}`));
   res.cookies.set(COOKIE_NAME, token, sessionCookieOptions());
 
   return res;

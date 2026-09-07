@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import type { ClaudeRolePolicy } from '@/lib/db/schema/messaging';
+import { apiFetch } from '@/lib/base-path';
 
 const DATA_DOMAINS = [
   'financial.transactions', 'financial.reports', 'financial.payroll',
@@ -24,13 +25,13 @@ export default function RbacPage() {
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
-    fetch('/api/messaging/admin/rbac')
+    apiFetch('/api/messaging/admin/rbac')
       .then((r) => r.json())
       .then((data) => { setPolicies(Array.isArray(data) ? data : []); setLoading(false); });
   }, []);
 
   async function handleToggle(policy: ClaudeRolePolicy) {
-    const res = await fetch(`/api/messaging/admin/rbac/${policy.id}`, {
+    const res = await apiFetch(`/api/messaging/admin/rbac/${policy.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ allowed: !policy.allowed }),
@@ -42,13 +43,13 @@ export default function RbacPage() {
   }
 
   async function handleDelete(id: string) {
-    await fetch(`/api/messaging/admin/rbac/${id}`, { method: 'DELETE' });
+    await apiFetch(`/api/messaging/admin/rbac/${id}`, { method: 'DELETE' });
     setPolicies((prev) => prev.filter((p) => p.id !== id));
   }
 
   async function handleAdd() {
     setAdding(true);
-    const res = await fetch('/api/messaging/admin/rbac', {
+    const res = await apiFetch('/api/messaging/admin/rbac', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role: newRole, dataDomain: newDomain, allowed: newAllowed }),

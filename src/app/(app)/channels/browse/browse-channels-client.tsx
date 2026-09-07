@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Hash, Lock, Megaphone, Users } from 'lucide-react';
+import { apiFetch } from '@/lib/base-path';
 
 interface BrowseChannel {
   id: string;
@@ -32,7 +33,7 @@ export function BrowseChannelsClient({ channels }: Props) {
   async function handleJoin(channelId: string) {
     setJoining(channelId);
     try {
-      const res = await fetch(`/api/messaging/channels/${channelId}/join`, { method: 'POST' });
+      const res = await apiFetch(`/api/messaging/channels/${channelId}/join`, { method: 'POST' });
       if (res.ok) {
         router.push(`/channels/${channelId}`);
       }
@@ -138,7 +139,7 @@ function CreateChannelModal({
     setLoading(true);
     setError('');
 
-    const res = await fetch('/api/messaging/channels', {
+    const res = await apiFetch('/api/messaging/channels', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, description: description || undefined, type }),

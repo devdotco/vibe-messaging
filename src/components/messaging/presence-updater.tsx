@@ -1,9 +1,10 @@
 'use client';
 import { useEffect } from 'react';
+import { apiFetch } from '@/lib/base-path';
 
 async function postPresence(status: 'online' | 'away' | 'offline') {
   try {
-    await fetch('/api/messaging/presence', {
+    await apiFetch('/api/messaging/presence', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),

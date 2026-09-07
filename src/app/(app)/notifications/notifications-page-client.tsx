@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, CheckCheck, MessageSquare, AtSign } from 'lucide-react';
 import type { Notification } from '@/lib/db/schema/messaging';
+import { apiFetch } from '@/lib/base-path';
 
 const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   mention: AtSign,
@@ -27,19 +28,19 @@ export function NotificationsPage() {
   const router = useRouter();
 
   useEffect(() => {
-    fetch('/api/messaging/notifications')
+    apiFetch('/api/messaging/notifications')
       .then((r) => r.json())
       .then((data) => { setNotifications(data); setLoading(false); });
   }, []);
 
   async function markAllRead() {
-    await fetch('/api/messaging/notifications', { method: 'PATCH' });
+    await apiFetch('/api/messaging/notifications', { method: 'PATCH' });
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   }
 
   function handleNavigate(n: Notification) {
     if (!n.isRead) {
-      fetch('/api/messaging/notifications', { method: 'PATCH' });
+      apiFetch('/api/messaging/notifications', { method: 'PATCH' });
       setNotifications((prev) => prev.map((x) => x.id === n.id ? { ...x, isRead: true } : x));
     }
     if (n.channelId) router.push(`/channels/${n.channelId}`);

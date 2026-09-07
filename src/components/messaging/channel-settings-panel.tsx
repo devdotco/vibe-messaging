@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, Plus, Trash2, Link2 } from 'lucide-react';
 import type { Channel, ChannelMember, User, ChannelProjectLink } from '@/lib/db/schema/messaging';
+import { apiFetch, withBase } from '@/lib/base-path';
 
 interface Props {
   channel: Channel;
@@ -29,14 +30,14 @@ export function ChannelSettingsPanel({ channel, currentUser, onClose, onUpdated 
 
   useEffect(() => {
     if (tab === 'members') {
-      fetch(`/api/messaging/channels/${channel.id}/members`)
+      apiFetch(`/api/messaging/channels/${channel.id}/members`)
         .then((r) => r.json())
         .then(setMembers);
-      fetch('/api/messaging/users')
+      apiFetch('/api/messaging/users')
         .then((r) => r.json())
         .then((data: { user: User }[]) => setOrgUsers(data.map((d) => d.user)));
     } else if (tab === 'projects') {
-      fetch(`/api/messaging/channels/${channel.id}/projects`)
+      apiFetch(`/api/messaging/channels/${channel.id}/projects`)
         .then((r) => r.json())
         .then(setProjects);
     }
@@ -45,7 +46,7 @@ export function ChannelSettingsPanel({ channel, currentUser, onClose, onUpdated 
   async function handleSave() {
     setSaving(true);
     try {
-      const res = await fetch(`/api/messaging/channels/${channel.id}`, {
+      const res = await apiFetch(`/api/messaging/channels/${channel.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, description, claudeEnabled }),
@@ -62,37 +63,37 @@ export function ChannelSettingsPanel({ channel, currentUser, onClose, onUpdated 
 
   async function handleArchive() {
     if (!confirm(`Archive #${channel.name}? Messages will still be readable.`)) return;
-    await fetch(`/api/messaging/channels/${channel.id}`, { method: 'DELETE' });
+    await apiFetch(`/api/messaging/channels/${channel.id}`, { method: 'DELETE' });
     onClose();
-    window.location.href = '/';
+    window.location.href = withBase('/');
   }
 
   async function handleAddMember() {
     if (!addingMemberId) return;
-    await fetch(`/api/messaging/channels/${channel.id}/members`, {
+    await apiFetch(`/api/messaging/channels/${channel.id}/members`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: addingMemberId }),
     });
-    const res = await fetch(`/api/messaging/channels/${channel.id}/members`);
+    const res = await apiFetch(`/api/messaging/channels/${channel.id}/members`);
     setMembers(await res.json());
     setAddingMemberId('');
   }
 
   async function handleLinkProject() {
     if (!newProjectId.trim()) return;
-    await fetch(`/api/messaging/channels/${channel.id}/projects`, {
+    await apiFetch(`/api/messaging/channels/${channel.id}/projects`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ projectId: newProjectId.trim() }),
     });
-    const res = await fetch(`/api/messaging/channels/${channel.id}/projects`);
+    const res = await apiFetch(`/api/messaging/channels/${channel.id}/projects`);
     setProjects(await res.json());
     setNewProjectId('');
   }
 
   async function handleUnlinkProject(projectId: string) {
-    await fetch(`/api/messaging/channels/${channel.id}/projects`, {
+    await apiFetch(`/api/messaging/channels/${channel.id}/projects`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ projectId }),

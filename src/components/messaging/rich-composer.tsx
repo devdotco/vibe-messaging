@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { User } from '@/lib/db/schema/messaging';
+import { apiFetch } from '@/lib/base-path';
 
 interface AttachmentPreview { name: string; size: number; url: string; fileType: string; }
 
@@ -65,7 +66,7 @@ export function RichComposer({
 
   const sendTypingSignal = useCallback(async (typing: boolean) => {
     if (!channelId) return;
-    fetch(`/api/messaging/channels/${channelId}/typing`, {
+    apiFetch(`/api/messaging/channels/${channelId}/typing`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ typing }),
     }).catch(() => {});
@@ -174,7 +175,7 @@ export function RichComposer({
     for (const file of files) {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch(`/api/messaging/channels/${channelId}/attachments`, { method: 'POST', body: fd });
+      const res = await apiFetch(`/api/messaging/channels/${channelId}/attachments`, { method: 'POST', body: fd });
       if (res.ok) {
         const data = await res.json();
         setAttachments((prev) => [...prev, { name: data.filename, size: data.size, url: data.url, fileType: data.fileType }]);

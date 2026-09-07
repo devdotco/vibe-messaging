@@ -11,6 +11,7 @@ import { getPusherClient } from '@/lib/pusher/client';
 import type { Channel, User } from '@/lib/db/schema/messaging';
 import type { MessageWithReactions } from '@/components/messaging/message-item';
 import type { AttachmentMeta } from '@/components/messaging/rich-composer';
+import { apiFetch } from '@/lib/base-path';
 
 type Tab = 'messages' | 'files' | 'pins';
 
@@ -169,7 +170,7 @@ export function ChannelView({ channel: initialChannel, initialMessages, usersMap
   }, [channel.id, currentUser.orgId, currentUser.id]);
 
   const handleSend = useCallback(async (content: string, parentMessageId?: string, attachments?: AttachmentMeta[]) => {
-    await fetch(`/api/messaging/channels/${channel.id}/messages`, {
+    await apiFetch(`/api/messaging/channels/${channel.id}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content, parentMessageId, attachments }),
@@ -177,7 +178,7 @@ export function ChannelView({ channel: initialChannel, initialMessages, usersMap
   }, [channel.id]);
 
   const handleReact = useCallback(async (messageId: string, emoji: string) => {
-    await fetch(`/api/messaging/messages/${messageId}/reactions`, {
+    await apiFetch(`/api/messaging/messages/${messageId}/reactions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ emoji }),
@@ -185,7 +186,7 @@ export function ChannelView({ channel: initialChannel, initialMessages, usersMap
   }, []);
 
   const handleDelete = useCallback(async (messageId: string) => {
-    await fetch(`/api/messaging/messages/${messageId}`, { method: 'DELETE' });
+    await apiFetch(`/api/messaging/messages/${messageId}`, { method: 'DELETE' });
   }, []);
 
   const handleEdit = useCallback((_message: MessageWithReactions) => {
@@ -199,7 +200,7 @@ export function ChannelView({ channel: initialChannel, initialMessages, usersMap
   const handleCreateTask = useCallback(async (message: MessageWithReactions) => {
     setTaskMessageContent(message.content);
     // Fetch linked projects for this channel
-    const res = await fetch(`/api/messaging/channels/${channel.id}/projects`);
+    const res = await apiFetch(`/api/messaging/channels/${channel.id}/projects`);
     const links = await res.json();
     setLinkedProjects(links);
     setShowCreateTask(true);
@@ -210,7 +211,7 @@ export function ChannelView({ channel: initialChannel, initialMessages, usersMap
     setLoadingMore(true);
     const oldest = messages[0];
     if (!oldest) { setLoadingMore(false); return; }
-    const res = await fetch(`/api/messaging/channels/${channel.id}/messages?before=${encodeURIComponent(new Date(oldest.createdAt!).toISOString())}&limit=50`);
+    const res = await apiFetch(`/api/messaging/channels/${channel.id}/messages?before=${encodeURIComponent(new Date(oldest.createdAt!).toISOString())}&limit=50`);
     const data = await res.json();
     const older: MessageWithReactions[] = data.messages ?? [];
     setMessages((prev) => [...older, ...prev]);
@@ -321,7 +322,7 @@ function ThreadPanel({ message, users, channelId, currentUser, onClose }: {
   const [replies, setReplies] = useState<MessageWithReactions[]>([]);
 
   useEffect(() => {
-    fetch(`/api/messaging/messages/${message.id}/thread`)
+    apiFetch(`/api/messaging/messages/${message.id}/thread`)
       .then((r) => r.json())
       .then((data: MessageWithReactions[]) => setReplies(data.map((m) => ({ ...m, reactions: m.reactions ?? [] }))));
   }, [message.id]);
@@ -339,7 +340,7 @@ function ThreadPanel({ message, users, channelId, currentUser, onClose }: {
   }, [channelId, message.id, currentUser.orgId]);
 
   async function handleSend(content: string, _parentMessageId?: string, attachments?: AttachmentMeta[]) {
-    await fetch(`/api/messaging/channels/${channelId}/messages`, {
+    await apiFetch(`/api/messaging/channels/${channelId}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content, parentMessageId: message.id, attachments }),
