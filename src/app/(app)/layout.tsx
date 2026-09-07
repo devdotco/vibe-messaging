@@ -11,6 +11,7 @@ import { PresenceUpdater } from '@/components/messaging/presence-updater';
 import { SidebarPresenceSync } from '@/components/messaging/sidebar-presence-sync';
 import { AppShell } from '@erp-ui';
 import { AppLayoutClient } from './layout-client';
+import { loadShellNav } from "@erp-ui/server";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -96,10 +97,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const notificationCount = notifRow?.count ?? 0;
 
+  // White-label chrome and entitlement, both from the shell in one call.
+
+  // Best-effort: brandVars(null) draws the erp.io defaults.
+
+  const { brand, modules } = await loadShellNav();
+
+
   return (
     <AppShell
+      brand={brand}
       moduleLabel="Chat"
-      rail={<ChatRail />}
+      rail={<ChatRail brand={brand} modules={modules} />}
       sidebar={
         <AppLayoutClient
           channels={userChannels}
