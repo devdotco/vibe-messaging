@@ -43,7 +43,7 @@ export const ERP_MODULES: readonly ErpModule[] = [
   { key: 'crm',       label: 'CRM',           url: 'https://app.erp.io/crm',        live: true  },
   { key: 'pm',        label: 'Projects',      url: 'https://app.erp.io/pm',         live: true  },
   { key: 'marketing', label: 'Marketing',     url: 'https://app.erp.io/marketing',  live: true  },
-  { key: 'sdr',       label: 'Phony',         url: 'https://phony.erp.io',          live: true  },
+  { key: 'sdr',       label: 'Phony',         url: 'https://app.erp.io/phony',          live: true  },
   { key: 'messaging', label: 'Chat',          url: 'https://app.erp.io/chat',           live: true  },
   { key: 'portal',    label: 'Client Portal', url: 'https://portal.erp.io',         live: true  },
   { key: 'plm',       label: 'PLM',           url: 'https://app.erp.io/plm',            live: true  },
