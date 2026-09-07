@@ -7,7 +7,7 @@ import crypto from 'crypto';
 
 const WEBHOOK_SECRET = process.env.VIBE_WEBHOOK_SECRET ?? '';
 const BOT_USER_ID = process.env.CLAUDE_BOT_USER_ID ?? 'claude';
-const PM_URL = process.env.NEXT_PUBLIC_PM_URL ?? 'https://pm.vb.co';
+const PM_URL = process.env.NEXT_PUBLIC_PM_URL ?? 'https://app.erp.io/pm';
 
 function verifySignature(body: string, signature: string): boolean {
   if (!WEBHOOK_SECRET) return true; // dev mode — skip verification

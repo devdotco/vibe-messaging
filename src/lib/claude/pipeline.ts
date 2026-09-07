@@ -9,7 +9,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
 const CLAUDE_BOT_USER_ID = process.env.CLAUDE_BOT_USER_ID!;
 const MODEL = 'claude-sonnet-4-5';
-const PM_MODULE_URL = process.env.PM_MODULE_URL ?? 'https://pm.vb.co';
+const PM_MODULE_URL = process.env.PM_MODULE_URL ?? 'https://app.erp.io/pm';
 const INTER_SERVICE_SECRET = process.env.INTER_SERVICE_SECRET!;
 
 export interface ClaudeContext {

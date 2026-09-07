@@ -6,10 +6,10 @@ import {
   userPresence, messages, workspaces, notifications,
 } from '@/lib/db/schema/messaging';
 import { eq, and, gt, isNull, sql, desc } from 'drizzle-orm';
-import { Sidebar, type DmEntry } from '@/components/layout/sidebar';
+import { ChatRail, type DmEntry } from '@/components/layout/sidebar';
 import { PresenceUpdater } from '@/components/messaging/presence-updater';
 import { SidebarPresenceSync } from '@/components/messaging/sidebar-presence-sync';
-import { AppSwitcher } from '@/components/layout/app-switcher';
+import { AppShell } from '@erp-ui';
 import { AppLayoutClient } from './layout-client';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -97,21 +97,25 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const notificationCount = notifRow?.count ?? 0;
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-      <AppSwitcher />
-      <AppLayoutClient
-        channels={userChannels}
-        dms={dmList}
-        currentUser={user}
-        workspaceName={workspaceName}
-        unreadCounts={unreadCounts}
-        notificationCount={notificationCount}
-      />
+    <AppShell
+      moduleLabel="Chat"
+      rail={<ChatRail />}
+      sidebar={
+        <AppLayoutClient
+          channels={userChannels}
+          dms={dmList}
+          currentUser={user}
+          workspaceName={workspaceName}
+          unreadCounts={unreadCounts}
+          notificationCount={notificationCount}
+        />
+      }
+    >
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg)' }}>
         <PresenceUpdater />
         <SidebarPresenceSync orgId={user.orgId} />
         {children}
       </main>
-    </div>
+    </AppShell>
   );
 }

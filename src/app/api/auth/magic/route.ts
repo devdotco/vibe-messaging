@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
   }
 
   const token = buildMagicToken(email, next);
-  const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'chat.vb.co';
+  const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'app.erp.io';
   const proto = req.headers.get('x-forwarded-proto') ?? 'https';
   const verifyUrl = `${proto}://${host}/api/auth/magic/verify?token=${encodeURIComponent(token)}`;
 
@@ -150,7 +150,7 @@ export async function GET(req: NextRequest) {
     expiresAt,
   });
 
-  const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'chat.vb.co';
+  const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'app.erp.io';
   const proto = req.headers.get('x-forwarded-proto') ?? 'https';
   const res = NextResponse.redirect(new URL(withBase('/'), `${proto}://${host}`));
   res.cookies.set(COOKIE_NAME, token, sessionCookieOptions());

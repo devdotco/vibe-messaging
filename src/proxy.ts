@@ -21,7 +21,7 @@ export function proxy(req: NextRequest) {
   const token =
     req.cookies.get(COOKIE_NAME)?.value ?? req.cookies.get(SHELL_COOKIE_NAME)?.value;
   if (!token) {
-    const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'chat.vb.co';
+    const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'app.erp.io';
     const proto = req.headers.get('x-forwarded-proto') ?? 'https';
     // withBase: Next hands us the path with the mount stripped, so without it
     // this returns people to the SHELL's page after signing in.

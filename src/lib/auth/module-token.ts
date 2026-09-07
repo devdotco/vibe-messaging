@@ -16,7 +16,7 @@ import { jwtVerify, createRemoteJWKSet, importSPKI, type JWTPayload } from 'jose
 
 export const AUDIENCE = 'messaging' as const;
 const ALG = 'EdDSA';
-const SHELL_URL_DEFAULT = 'https://app.vb.co';
+const SHELL_URL_DEFAULT = 'https://app.erp.io';
 
 export interface ShellIdentity {
   shellUserId: string;
@@ -46,7 +46,7 @@ export function shellUrl(): string {
  * an address: where to send a browser, where to fetch the public keys.
  * SHELL_TOKEN_ISSUER is a name: who signed this.
  */
-const TOKEN_ISSUER_DEFAULT = 'https://app.vb.co';
+const TOKEN_ISSUER_DEFAULT = 'https://app.erp.io';
 
 export function tokenIssuer(): string {
   return (process.env.SHELL_TOKEN_ISSUER ?? TOKEN_ISSUER_DEFAULT).replace(/\/$/, '');

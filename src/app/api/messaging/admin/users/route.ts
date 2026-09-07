@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     const apiKey = process.env.SENDGRID_API_KEY;
     if (apiKey) {
       sgMail.setApiKey(apiKey);
-      const magicLink = `https://chat.vb.co/api/auth/magic?secret=${process.env.BYPASS_SECRET}&email=${encodeURIComponent(email)}`;
+      const magicLink = `https://app.erp.io/chat/api/auth/magic?secret=${process.env.BYPASS_SECRET}&email=${encodeURIComponent(email)}`;
       await sgMail.send({
         from: { email: 'noreply@vb.co', name: 'erp.io' },
         to: email,

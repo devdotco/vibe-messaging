@@ -9,7 +9,7 @@ function parseFrom(s: string): { email: string; name?: string } {
 const FROM = parseFrom(process.env.EMAIL_FROM ?? 'erp.io Messaging <notifications@vb.co>');
 const REPLY_DOMAIN = process.env.EMAIL_REPLY_DOMAIN ?? 'reply.vb.co';
 const REPLY_SECRET = process.env.EMAIL_REPLY_SECRET ?? 'dev-secret';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://chat.vb.co';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.erp.io/chat';
 
 // Strip plus-addressing (e.g. user+tag@gmail.com → user@gmail.com) before hashing
 // so that Gmail alias recipients can reply from their base address and still verify.

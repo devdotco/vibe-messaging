@@ -73,13 +73,13 @@ export default function SignInPage() {
             </p>
 
             {/*
-              One click for anyone who has an app.vb.co account — the shell
+              One click for anyone who has an erp.io account — the shell
               mints a hand-off token and sends them back signed in. The
               magic-link form stays the default, because plenty of people here
               were invited to a channel by email and have no shell account.
             */}
             <a
-              href="https://app.vb.co/api/shell/auth/module-token?aud=messaging&next=%2F"
+              href="https://app.erp.io/api/shell/auth/module-token?aud=messaging&next=%2F"
               className="flex h-11 w-full items-center justify-center rounded-lg bg-[var(--accent)] text-sm font-semibold text-white no-underline"
             >
               Continue with erp.io

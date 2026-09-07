@@ -64,7 +64,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ con
 
   await pusherServer.trigger(`org-${user.orgId}-dm-${conversationId}`, 'dm.new', { message });
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://chat.vb.co';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.erp.io/chat';
   const mentionedSet = new Set(parsed.mentionedUserIds);
 
   // Notify all other conversation participants (fire and forget)

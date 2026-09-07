@@ -28,7 +28,7 @@ interface TypingUser {
   name: string;
 }
 
-const PM_URL = process.env.NEXT_PUBLIC_PM_URL ?? 'https://pm.vb.co';
+const PM_URL = process.env.NEXT_PUBLIC_PM_URL ?? 'https://app.erp.io/pm';
 
 export function ChannelView({ channel: initialChannel, initialMessages, usersMap, currentUser, memberCount }: Props) {
   const [channel, setChannel] = useState(initialChannel);

@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
     expiresAt,
   });
 
-  const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'chat.vb.co';
+  const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'app.erp.io';
   const proto = req.headers.get('x-forwarded-proto') ?? 'https';
 
   // Redirect to intended destination (must be same host for safety)

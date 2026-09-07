@@ -12,6 +12,9 @@ import { ChannelListSkeleton } from '@/components/ui/Skeleton';
 import { cn } from '@/lib/utils';
 import type { Channel, User } from '@/lib/db/schema/messaging';
 import { apiFetch } from '@/lib/base-path';
+import { ModuleSidebar, AppRail, buildRailItems } from '@erp-ui';
+import type { ErpBrand } from '@erp-ui';
+import { ERP_MODULE_ICONS } from '@erp-ui/icons';
 
 export interface DmEntry {
   conversationId: string;
@@ -154,93 +157,52 @@ export function Sidebar({ channels, dms, currentUser, workspaceName: initialWork
   const QUICK_EMOJIS = ['🎯', '🏃', '🔴', '📵', '🤒', '🌴', '🚀', '🎉'];
 
   return (
-    <aside
-      style={{
-        width: 260,
-        minWidth: 260,
-        background: 'var(--sidebar)',
-        borderRight: '1px solid var(--sidebar-border)',
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        overflow: 'hidden',
-        color: 'var(--sidebar-text)',
-      }}
-    >
-      {/* Workspace header */}
-      <div
-        className="flex items-center justify-between px-4 py-3"
-        style={{ borderBottom: '1px solid var(--sidebar-border)' }}
-      >
-        <div ref={wsMenuRef} className="relative">
-          <button
-            onClick={() => setShowWsMenu(v => !v)}
-            className="flex items-center gap-1.5 font-bold text-sm hover:opacity-80 transition-opacity truncate max-w-[160px]"
-          >
-            <span className="truncate" style={{ color: 'var(--sidebar-text)' }}>
-              {workspaceName}
-            </span>
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
-          </button>
-          {showWsMenu && (
-            <div style={{
-              position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 200,
-              background: 'var(--bg-elevated)', border: '1px solid var(--border)',
-              borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.25)', width: '200px', overflow: 'hidden',
-            }}>
-              <div style={{ padding: '6px' }}>
-                <button
-                  onClick={() => { setShowWsMenu(false); setShowRenameModal(true); }}
-                  className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm hover:bg-[var(--panel-hover)] transition-colors"
-                  style={{ color: 'var(--text-primary)' }}
-                >
-                  <Pencil className="h-3.5 w-3.5 opacity-60" />
-                  Rename workspace
-                </button>
-                <Link
-                  href="/admin/users"
-                  onClick={() => setShowWsMenu(false)}
-                  className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm hover:bg-[var(--panel-hover)] transition-colors"
-                  style={{ color: 'var(--text-primary)', textDecoration: 'none' }}
-                >
-                  <Users className="h-3.5 w-3.5 opacity-60" />
-                  Manage members
-                </Link>
-              </div>
-            </div>
-          )}
-          {showRenameModal && (
-            <RenameWorkspaceModal
-              current={workspaceName}
-              onClose={() => setShowRenameModal(false)}
-              onSave={(name) => { setWorkspaceName(name); setShowRenameModal(false); }}
-            />
-          )}
-        </div>
-        <div className="flex items-center gap-1">
-          {notificationCount > 0 && (
+    <>
+      <ModuleSidebar
+        moduleLabel="Chat"
+        moduleIcon={ERP_MODULE_ICONS.messaging}
+        moduleHref="/"
+        sections={[]}
+        user={{ name: currentUser.name ?? currentUser.email, email: currentUser.email }}
+        settingsHref="/settings"
+        /*
+         * The workspace name is this module's own control — it renames in
+         * place from a menu — so it sits above the tree rather than in the
+         * shared org switcher, which switches rather than renames.
+         */
+        primaryAction={
+          <div ref={wsMenuRef} className="relative" style={{ margin: '10px 10px 0' }}>
             <button
-              onClick={onOpenNotifications}
-              className="relative p-1 rounded hover:bg-[var(--sidebar-hover)] transition-colors"
-              title="Notifications"
+              onClick={() => setShowWsMenu(v => !v)}
+              className="flex items-center gap-1.5 font-bold text-sm w-full"
+              style={{ color: 'var(--erp-sidebar-text)' }}
             >
-              <Bell className="h-4 w-4" style={{ color: 'var(--sidebar-text-muted)' }} />
-              <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[14px] text-[9px] font-bold rounded-full bg-[var(--accent)] text-white flex items-center justify-center px-1 leading-none">
-                {notificationCount > 99 ? '99+' : notificationCount}
-              </span>
+              <span className="truncate">{workspaceName}</span>
+              <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
             </button>
-          )}
-          <button
-            onClick={() => setShowNewDm(true)}
-            className="p-1 rounded hover:bg-[var(--sidebar-hover)] transition-colors"
-            title="New message"
-          >
-            <MessageSquarePlus className="h-4 w-4" style={{ color: 'var(--sidebar-text-muted)' }} />
-          </button>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto py-2" style={{ scrollbarWidth: 'thin' }}>
+            {showWsMenu && (
+              <div
+                className="absolute left-0 right-0 mt-1 rounded-md p-1 z-50"
+                style={{
+                  background: 'var(--erp-rail-bg)',
+                  border: '1px solid var(--erp-sidebar-border)',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
+                }}
+              >
+                <button
+                  className="erp-nav-row"
+                  onClick={() => { setShowWsMenu(false); setShowRenameModal(true); }}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  <span className="erp-nav-label">Rename workspace</span>
+                </button>
+              </div>
+            )}
+          </div>
+        }
+        /* Channels, DMs and search: genuinely Chat's, and the reason this
+           module takes a slot rather than a declared nav. */
+        scrollExtra={<>
         {/* Search */}
         <Link
           href="/search"
@@ -401,7 +363,8 @@ export function Sidebar({ channels, dms, currentUser, workspaceName: initialWork
             ))}
           </div>
         )}
-      </div>
+        </>}
+      />
 
       {/* Current user footer */}
       <div
@@ -490,7 +453,7 @@ export function Sidebar({ channels, dms, currentUser, workspaceName: initialWork
       {showNewDm && (
         <NewDmModal onClose={() => setShowNewDm(false)} onStart={handleNewDm} />
       )}
-    </aside>
+    </>
   );
 }
 
@@ -675,5 +638,24 @@ function NewDmModal({ onClose, onStart }: { onClose: () => void; onStart: (userI
         </div>
       </div>
     </div>
+  );
+}
+
+
+/**
+ * The suite rail for Chat.
+ *
+ * Built in this client component and it must stay that way: the layout is a
+ * server component and `buildRailItems()` returns items whose `icon` is a React
+ * component. Handing a function across that boundary compiles, builds, and then
+ * throws on every request.
+ */
+export function ChatRail({ modules, brand }: { modules?: string[] | null; brand?: ErpBrand | null }) {
+  return (
+    <AppRail
+      items={buildRailItems({ enabled: modules ?? undefined })}
+      activeKey="messaging"
+      brand={brand}
+    />
   );
 }

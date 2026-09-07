@@ -232,7 +232,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cha
   await pusherServer.trigger(`org-${user.orgId}-channel-${channelId}`, 'message.new', { message: messageWithReactions });
 
   // 9. Create @mention notifications + email
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://chat.vb.co';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.erp.io/chat';
   for (const mentionedId of parsed.mentionedUserIds) {
     await db.insert(notifications).values({
       userId: mentionedId,

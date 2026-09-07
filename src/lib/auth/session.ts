@@ -28,7 +28,7 @@ export const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
 // finance.vb.co validates a shell session and exposes /api/auth/me. Kept as a
 // fallback so nobody who reaches Chat that way today loses access; the shell
 // hand-off at /api/auth/callback is the path new sessions take.
-const AUTH_URL = process.env.AUTH_URL ?? 'https://finance.vb.co';
+const AUTH_URL = process.env.AUTH_URL ?? 'https://app.erp.io/accounting';
 
 /**
  * Cookie options for the session this app issues. No `domain`: host-scoped to

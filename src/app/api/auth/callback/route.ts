@@ -30,7 +30,7 @@ function safeReturnPath(raw: string | null): string {
 function publicOrigin(req: NextRequest): string {
   const configured = process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL;
   if (configured) return configured.replace(/\/$/, '');
-  const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'chat.vb.co';
+  const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? 'app.erp.io';
   const proto = req.headers.get('x-forwarded-proto') ?? 'https';
   return `${proto}://${host}`;
 }
