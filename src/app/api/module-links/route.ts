@@ -18,8 +18,12 @@ export async function GET(req: NextRequest) {
   if (!me) return NextResponse.json({ records: [] });
 
   const email = req.nextUrl.searchParams.get('email')?.trim().toLowerCase();
-  const q = req.nextUrl.searchParams.get('q')?.trim();
-  if (!email && !q) return NextResponse.json({ records: [] });
+  const rawQ = req.nextUrl.searchParams.get('q');
+  const q = rawQ?.trim();
+  // A `q` that is present but blank asks for the MOST RECENT channels — what
+  // the CRM's attach picker opens with, so it is useful before anyone types.
+  const wantsRecent = rawQ !== null && !q;
+  if (!email && !q && !wantsRecent) return NextResponse.json({ records: [] });
 
   const base = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.erp.io/chat').replace(/\/$/, '');
   const records: {
@@ -108,7 +112,7 @@ export async function GET(req: NextRequest) {
         }
       }
     }
-  } else if (q) {
+  } else {
     // Manual attach: search the channels the caller can actually see.
     const mine = await db
       .select({ channelId: channelMembers.channelId })
@@ -121,7 +125,11 @@ export async function GET(req: NextRequest) {
     const rows = await db
       .select({ id: channels.id, name: channels.name, type: channels.type, createdAt: channels.createdAt })
       .from(channels)
-      .where(and(eq(channels.orgId, me.orgId), inArray(channels.id, mineIds), ilike(channels.name, `%${q}%`)))
+      .where(
+        wantsRecent
+          ? and(eq(channels.orgId, me.orgId), inArray(channels.id, mineIds))
+          : and(eq(channels.orgId, me.orgId), inArray(channels.id, mineIds), ilike(channels.name, `%${q}%`)),
+      )
       .orderBy(desc(channels.createdAt))
       .limit(25);
     for (const c of rows) {
