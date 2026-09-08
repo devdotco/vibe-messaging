@@ -3,6 +3,7 @@ import { and, arrayContains, desc, eq, ilike, inArray } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { users, channels, channelMembers, dmConversations } from '@/lib/db/schema/messaging';
 import { getCurrentUser } from '@/lib/auth/session';
+import { verifyModuleToken } from '@/lib/auth/module-token';
 
 /**
  * The cross-module link contract, implemented for Chat.
@@ -12,9 +13,39 @@ import { getCurrentUser } from '@/lib/auth/session';
  * share, and the channels you are both in. Channels the person belongs to but
  * the caller does not are deliberately left out — a contact tab is not a way
  * to enumerate private rooms you were never invited to.
+ *
+ * Authenticated by this app's session from a browser, and by a shell-minted
+ * hand-off token when another module calls it. The token is not an
+ * optimisation: this app's cookie is set with `path: /chat`, so a browser never
+ * sends it to /crm and the forwarded cookie header does not contain it.
  */
+
+/** Who is asking: this app's session, or a verified shell token. */
+async function resolveCaller(req: NextRequest) {
+  const local = await getCurrentUser();
+  if (local) return local;
+
+  const auth = req.headers.get('authorization');
+  if (!auth?.startsWith('Bearer ')) return null;
+
+  let identity;
+  try {
+    identity = await verifyModuleToken(auth.slice(7).trim());
+  } catch {
+    return null;
+  }
+
+  // Prefer the account in the org the token names; otherwise a lone account for
+  // that proven address. Nothing is created here, so this reads an existing
+  // identity rather than adopting one by email.
+  const rows = await db.select().from(users).where(eq(users.email, identity.email)).limit(5);
+  const active = rows.filter((r) => r.status === 'active');
+  const preferred = active.find((r) => r.orgId === identity.shellOrgId);
+  return preferred ?? (active.length === 1 ? active[0] : null);
+}
+
 export async function GET(req: NextRequest) {
-  const me = await getCurrentUser();
+  const me = await resolveCaller(req);
   if (!me) return NextResponse.json({ records: [] });
 
   const email = req.nextUrl.searchParams.get('email')?.trim().toLowerCase();

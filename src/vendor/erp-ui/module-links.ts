@@ -144,7 +144,13 @@ export async function fetchModuleLinkResponse(
       }]
     })
     return { records, scope: typeof body.scope === 'string' ? body.scope : undefined }
-  } catch {
+  } catch (err) {
+    // Silence here is what made this hard to see: a timeout, a DNS failure and
+    // an empty workspace all rendered identically as "nothing found".
+    const reason = (err as Error)?.name === 'TimeoutError'
+      ? `did not answer within ${timeoutMs}ms`
+      : `failed: ${(err as Error)?.message ?? 'unknown error'}`
+    console.warn(`[module-links] ${moduleUrl} ${reason}`)
     return { records: [] }
   }
 }
