@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { COOKIE_NAME, SHELL_COOKIE_NAME } from '@/lib/auth/session';
 import { stripBase, withBase } from '@/lib/base-path';
 
-const PUBLIC = ['/sign-in', '/api/webhooks', '/api/webhooks/email/inbound', '/api/health', '/api/auth', '/api/messaging/webhooks'];
+// '/api/module-links' is the cross-module link endpoint: a DATA call, never a
+// navigation, so it must never be answered with a redirect. Left private, the
+// proxy sent the CRM's server-to-server fetch off to the SSO hand-off, `fetch`
+// followed it, and the caller got a sign-in page with a 200 on it — which
+// surfaced as "no results". It authenticates with this app's own session and
+// returns an empty list when there is none, so it is fail-closed on its own.
+const PUBLIC = ['/sign-in', '/api/webhooks', '/api/webhooks/email/inbound', '/api/health', '/api/auth', '/api/messaging/webhooks', '/api/module-links'];
 
 export function proxy(req: NextRequest) {
   /*
