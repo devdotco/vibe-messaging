@@ -9,7 +9,7 @@ import { eq, and, gt, isNull, sql, desc } from 'drizzle-orm';
 import { ChatRail, type DmEntry } from '@/components/layout/sidebar';
 import { PresenceUpdater } from '@/components/messaging/presence-updater';
 import { SidebarPresenceSync } from '@/components/messaging/sidebar-presence-sync';
-import { AppShell } from '@erp-ui';
+import { AppShell, AgentDock } from "@erp-ui";
 import { AppLayoutClient } from './layout-client';
 import { loadShellNav } from "@erp-ui/server";
 
@@ -125,6 +125,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <SidebarPresenceSync orgId={user.orgId} />
         {children}
       </main>
+      {/* The assistant. Inside the frame so it is present on every page of
+          this module rather than remembered per page. */}
+      <AgentDock moduleKey="messaging" />
     </AppShell>
   );
 }
