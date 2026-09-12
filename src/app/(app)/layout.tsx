@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/session';
 import { db } from '@/lib/db';
@@ -15,7 +16,29 @@ import { loadShellNav } from "@erp-ui/server";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
-  if (!user) redirect('/sign-in');
+  if (!user) {
+    /*
+     * The fast path, repeated HERE because middleware cannot cover the bare
+     * mount.
+     *
+     * Next does not run middleware for the basePath root, so a request to
+     * `app.erp.io/chat` never reaches `proxy.ts` — and the bare mount is
+     * exactly what the suite's app switcher links to. The proxy's fast path
+     * therefore never fired on a module switch, and somebody already signed in
+     * to erp.io was shown this module's own magic-link form. `/chat/channels`
+     * was always fine, which is what made it look intermittent.
+     *
+     * Sign-in here is a magic link rather than a pure hand-off, so the form
+     * still stands for anyone with no suite session — people invited straight
+     * to a channel. This only skips it for somebody the shell already knows.
+     */
+    const shellSession = (await cookies()).get('__vibe_session')?.value;
+    if (shellSession) {
+      const shell = (process.env.NEXT_PUBLIC_SHELL_URL ?? 'https://app.erp.io').replace(/\/$/, '');
+      redirect(`${shell}/api/shell/auth/module-token?aud=messaging&next=%2F`);
+    }
+    redirect('/sign-in');
+  }
 
   const memberships = await db
     .select({ channel: channels, lastReadAt: channelMembers.lastReadAt })
