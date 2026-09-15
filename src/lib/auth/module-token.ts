@@ -23,6 +23,8 @@ export interface ShellIdentity {
   email: string;
   fullName: string;
   shellOrgId?: string;
+  /** The organisation's name as the shell holds it (`org_name`). */
+  orgName?: string;
   shellSessionId?: string;
 }
 
@@ -100,8 +102,8 @@ export async function verifyModuleToken(token: string): Promise<ShellIdentity> {
 }
 
 function toIdentity(payload: JWTPayload): ShellIdentity {
-  const { sub, email, name, org, sid } = payload as JWTPayload & {
-    email?: unknown; name?: unknown; org?: unknown; sid?: unknown;
+  const { sub, email, name, org, org_name, sid } = payload as JWTPayload & {
+    email?: unknown; name?: unknown; org?: unknown; org_name?: unknown; sid?: unknown;
   };
 
   if (typeof sub !== 'string' || !sub) throw new Error('Module token has no subject');
@@ -112,6 +114,7 @@ function toIdentity(payload: JWTPayload): ShellIdentity {
     email,
     fullName: typeof name === 'string' ? name : '',
     shellOrgId: typeof org === 'string' ? org : undefined,
+    orgName: typeof org_name === 'string' ? org_name : undefined,
     shellSessionId: typeof sid === 'string' ? sid : undefined,
   };
 }

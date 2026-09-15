@@ -4,6 +4,7 @@ import { users } from '@/lib/db/schema/messaging';
 import { and, eq } from 'drizzle-orm';
 import { verifyModuleToken, shellSignInUrl, type ShellIdentity } from '@/lib/auth/module-token';
 import { createSessionToken, sessionCookieOptions, COOKIE_NAME } from '@/lib/auth/session';
+import { ensureOrgChat } from '@/lib/org-provision';
 
 /**
  * Redeems a shell-issued module token for a Chat session.
@@ -100,6 +101,7 @@ export async function GET(req: NextRequest) {
   try {
     const identity = await verifyModuleToken(token);
     user = await mirrorPrincipal(identity);
+    if (user) await ensureOrgChat(user.orgId, identity.orgName, user.id);
   } catch (err) {
     // Anything suspect — expired, wrong audience, wrong key, no org — is "not
     // signed in". Never a soft failure that lets the request through.

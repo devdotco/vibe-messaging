@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   Hash, Lock, Megaphone, Plus, ChevronDown, ChevronRight,
   Globe, ShieldCheck, Search, Bell, MessageSquarePlus,
-  Bot, Settings, X, Pencil, Users,
+  Bot, Settings, X, Pencil, Users, Smile,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ChannelListSkeleton } from '@/components/ui/Skeleton';
@@ -165,6 +165,77 @@ export function Sidebar({ channels, dms, currentUser, workspaceName: initialWork
         sections={[]}
         user={{ name: currentUser.name ?? currentUser.email, email: currentUser.email }}
         settingsHref="/settings"
+        /*
+         * Status and notifications live INSIDE the shared footer. They used to
+         * be a second user footer rendered after <ModuleSidebar>, which put it
+         * outside the sidebar entirely: it landed in the page body as a stray
+         * column beside the content, duplicating the user block the shared
+         * footer already draws.
+         */
+        footerExtra={
+          <div className="relative">
+            <button type="button" className="erp-foot-row" onClick={() => setShowStatusEdit((v) => !v)}>
+              <Smile size={14} />
+              <span>Set status</span>
+            </button>
+            <button type="button" className="erp-foot-row" onClick={onOpenNotifications}>
+              <Bell size={14} />
+              <span>Notifications</span>
+              {notificationCount > 0 && (
+                <span className="ml-auto rounded-full bg-[var(--accent)] px-1.5 text-[10px] font-semibold text-white">
+                  {notificationCount}
+                </span>
+              )}
+            </button>
+            {showStatusEdit && (
+              <div
+                className="absolute bottom-full left-0 right-0 z-50 mb-2 rounded-xl shadow-2xl border p-4"
+                style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-semibold text-[var(--text-primary)]">Set status</span>
+                  <button onClick={() => setShowStatusEdit(false)}>
+                    <X className="h-4 w-4 text-[var(--text-muted)]" />
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1 mb-3">
+                  {QUICK_EMOJIS.map((e) => (
+                    <button
+                      key={e}
+                      onClick={() => setStatusMessage((s) => e + ' ' + s.replace(/^[\p{Emoji}]\s*/u, ''))}
+                      className="text-lg hover:scale-125 transition-transform"
+                    >
+                      {e}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  maxLength={80}
+                  placeholder="What's your status?"
+                  value={statusMessage}
+                  onChange={(e) => setStatusMessage(e.target.value)}
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] text-sm text-[var(--text-primary)] px-3 py-2 outline-none focus:border-[var(--accent)] mb-3"
+                  onKeyDown={(e) => e.key === 'Enter' && saveStatus()}
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={saveStatus}
+                    className="flex-1 py-1.5 rounded-lg bg-[var(--accent)] text-white text-sm hover:bg-[var(--accent-hover)]"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => { setStatusMessage(''); setShowStatusEdit(false); }}
+                    className="py-1.5 px-3 rounded-lg text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        }
         /*
          * The workspace name is this module's own control — it renames in
          * place from a menu — so it sits above the tree rather than in the
@@ -365,89 +436,6 @@ export function Sidebar({ channels, dms, currentUser, workspaceName: initialWork
         )}
         </>}
       />
-
-      {/* Current user footer */}
-      <div
-        className="p-3 flex items-center gap-2"
-        style={{ borderTop: '1px solid var(--sidebar-border)' }}
-      >
-        <button
-          className="relative shrink-0"
-          onClick={() => setShowStatusEdit((v) => !v)}
-          title="Set status"
-        >
-          <Avatar className="h-7 w-7">
-            <AvatarImage src={currentUser.avatarUrl ?? ''} />
-            <AvatarFallback style={{ background: '#2563eb', color: '#fff', fontSize: 11 }}>
-              {currentUser.name[0]?.toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <PresenceDotInline status="online" />
-        </button>
-        <div className="flex-1 min-w-0">
-          <div className="text-xs font-semibold truncate" style={{ color: 'var(--sidebar-text)' }}>
-            {currentUser.name}
-          </div>
-          <div className="text-[10px] truncate" style={{ color: 'var(--sidebar-text-muted)' }}>
-            {currentUser.email}
-          </div>
-        </div>
-        <button
-          onClick={onOpenNotifications}
-          className="p-1 rounded hover:bg-[var(--sidebar-hover)] transition-colors"
-        >
-          <Bell className="h-3.5 w-3.5" style={{ color: 'var(--sidebar-text-muted)' }} />
-        </button>
-      </div>
-
-      {/* Status edit popup */}
-      {showStatusEdit && (
-        <div
-          className="absolute bottom-16 left-4 right-4 z-50 rounded-xl shadow-2xl border p-4"
-          style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-semibold text-[var(--text-primary)]">Set status</span>
-            <button onClick={() => setShowStatusEdit(false)}>
-              <X className="h-4 w-4 text-[var(--text-muted)]" />
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-1 mb-3">
-            {QUICK_EMOJIS.map((e) => (
-              <button
-                key={e}
-                onClick={() => setStatusMessage((s) => e + ' ' + s.replace(/^[\p{Emoji}]\s*/u, ''))}
-                className="text-lg hover:scale-125 transition-transform"
-              >
-                {e}
-              </button>
-            ))}
-          </div>
-          <input
-            type="text"
-            maxLength={80}
-            placeholder="What's your status?"
-            value={statusMessage}
-            onChange={(e) => setStatusMessage(e.target.value)}
-            className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] text-sm text-[var(--text-primary)] px-3 py-2 outline-none focus:border-[var(--accent)] mb-3"
-            onKeyDown={(e) => e.key === 'Enter' && saveStatus()}
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={saveStatus}
-              className="flex-1 py-1.5 rounded-lg bg-[var(--accent)] text-white text-sm hover:bg-[var(--accent-hover)]"
-            >
-              Save
-            </button>
-            <button
-              onClick={() => { setStatusMessage(''); setShowStatusEdit(false); }}
-              className="py-1.5 px-3 rounded-lg text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-            >
-              Clear
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* New DM Modal */}
       {showNewDm && (
