@@ -46,7 +46,11 @@ export function shellUrl(): string {
  * an address: where to send a browser, where to fetch the public keys.
  * SHELL_TOKEN_ISSUER is a name: who signed this.
  */
-const TOKEN_ISSUER_DEFAULT = 'https://app.erp.io';
+// The shell's MODULE_TOKEN_ISSUER (app-erp-io lib/auth/module-token.ts) — still
+// app.vb.co after the erp.io move, on purpose. Defaulting to app.erp.io here
+// rejected every hand-off, so anyone without a Chat session already was sent
+// to the shell's sign-in and, being signed in, landed on /home.
+const TOKEN_ISSUER_DEFAULT = 'https://app.vb.co';
 
 export function tokenIssuer(): string {
   return (process.env.SHELL_TOKEN_ISSUER ?? TOKEN_ISSUER_DEFAULT).replace(/\/$/, '');
