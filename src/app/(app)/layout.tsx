@@ -124,7 +124,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   // Best-effort: brandVars(null) draws the erp.io defaults.
 
-  const { brand, modules } = await loadShellNav();
+  const { brand, modules, parked } = await loadShellNav({ module: 'messaging' });
+
+  // Beyond the org's plan: billing explains it. A shell outage reports nothing
+  // parked, so it never locks anyone out.
+  if (parked.includes('messaging')) {
+    const shell = (process.env.NEXT_PUBLIC_SHELL_URL ?? 'https://app.erp.io').replace(/\/$/, '');
+    redirect(`${shell}/settings/org/billing?over=messaging`);
+  }
 
 
   return (
