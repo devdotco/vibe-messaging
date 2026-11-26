@@ -9,6 +9,7 @@ import { sendMentionEmail, sendDmEmail } from '@/lib/email/notifications';
 import { rateLimit } from '@/lib/rate-limit';
 import { validate, z } from '@/lib/validate';
 import { eq, and, isNull, asc, sql } from 'drizzle-orm';
+import { dmChannel } from '@/lib/pusher/channels';
 
 const DmMessageSchema = z.object({
   content: z.string().min(1).max(40_000),
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ con
     hasClaudeMention: parsed.hasClaude,
   }).returning();
 
-  await pusherServer.trigger(`org-${user.orgId}-dm-${conversationId}`, 'dm.new', { message });
+  await pusherServer.trigger(dmChannel(user.orgId, conversationId), 'dm.new', { message });
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.erp.io/chat';
   const mentionedSet = new Set(parsed.mentionedUserIds);

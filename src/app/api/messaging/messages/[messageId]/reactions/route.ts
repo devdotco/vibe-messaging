@@ -5,6 +5,7 @@ import { requireUser } from '@/lib/auth/session';
 import { pusherServer } from '@/lib/pusher/server';
 import { validate, z } from '@/lib/validate';
 import { eq, and } from 'drizzle-orm';
+import { channelChannel } from '@/lib/pusher/channels';
 
 const ReactionSchema = z.object({
   emoji: z.string().min(1).max(10),
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ mes
   const [msg] = await db.select().from(messages).where(eq(messages.id, messageId));
   if (msg) {
     await pusherServer.trigger(
-      `org-${user.orgId}-channel-${msg.channelId}`,
+      channelChannel(user.orgId, msg.channelId),
       'message.reaction',
       { messageId, emoji, userId: user.id, action: 'add' },
     );

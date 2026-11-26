@@ -4,6 +4,7 @@ import { getUserAllowedDomains, queryWarehouseForContext } from '@/lib/airbyte/w
 import { db } from '@/lib/db';
 import { claudeUsageLog, messages } from '@/lib/db/schema/messaging';
 import { pusherServer } from '@/lib/pusher/server';
+import { channelChannel } from '@/lib/pusher/channels';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
@@ -200,7 +201,7 @@ export async function runClaudePipeline(ctx: ClaudeContext): Promise<void> {
     })
     .returning();
 
-  const pusherChannel = `org-${ctx.orgId}-channel-${ctx.channelId}`;
+  const pusherChannel = channelChannel(ctx.orgId, ctx.channelId);
 
   await pusherServer.trigger(pusherChannel, 'claude.thinking', { messageId: placeholder.id });
 

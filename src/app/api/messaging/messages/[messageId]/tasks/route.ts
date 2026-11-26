@@ -4,6 +4,7 @@ import { messageTaskLinks, messages } from '@/lib/db/schema/messaging';
 import { requireUser } from '@/lib/auth/session';
 import { pusherServer } from '@/lib/pusher/server';
 import { eq } from 'drizzle-orm';
+import { channelChannel } from '@/lib/pusher/channels';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ messageId: string }> }) {
   const user = await requireUser();
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ mes
     }).returning();
 
     await pusherServer.trigger(
-      `org-${user.orgId}-channel-${msg.channelId}`,
+      channelChannel(user.orgId, msg.channelId),
       'message.new',
       { message: systemMsg },
     );

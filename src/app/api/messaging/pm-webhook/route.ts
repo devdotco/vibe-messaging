@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { channelProjectLinks, messages } from '@/lib/db/schema/messaging';
 import { pusherServer } from '@/lib/pusher/server';
 import { eq, and } from 'drizzle-orm';
+import { channelChannel } from '@/lib/pusher/channels';
 
 const EVENT_TEMPLATES: Record<string, (data: Record<string, string>) => string> = {
   'task.created': (d) => `📋 New task: **${d.taskTitle}** assigned to ${d.assignee}`,
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
       metadata: { system: true, pmEvent: eventType },
     }).returning();
 
-    await pusherServer.trigger(`org-${orgId}-channel-${link.channelId}`, 'message.new', { message: msg });
+    await pusherServer.trigger(channelChannel(orgId, link.channelId), 'message.new', { message: msg });
   }
 
   return NextResponse.json({ ok: true });

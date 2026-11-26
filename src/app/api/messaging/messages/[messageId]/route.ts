@@ -6,6 +6,7 @@ import { pusherServer } from '@/lib/pusher/server';
 import { eq, and } from 'drizzle-orm';
 import { micromark } from 'micromark';
 import { linkifyMarkdown } from '@/lib/linkify';
+import { channelChannel } from '@/lib/pusher/channels';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ messageId: string }> }) {
   const user = await requireUser();
@@ -23,7 +24,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ me
   if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   await pusherServer.trigger(
-    `org-${user.orgId}-channel-${updated.channelId}`,
+    channelChannel(user.orgId, updated.channelId),
     'message.updated',
     { messageId, content, contentHtml },
   );
@@ -44,7 +45,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!deleted) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   await pusherServer.trigger(
-    `org-${user.orgId}-channel-${deleted.channelId}`,
+    channelChannel(user.orgId, deleted.channelId),
     'message.deleted',
     { messageId },
   );

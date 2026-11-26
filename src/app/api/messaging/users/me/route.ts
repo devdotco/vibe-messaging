@@ -4,6 +4,7 @@ import { userPresence, users } from '@/lib/db/schema/messaging';
 import { requireUser } from '@/lib/auth/session';
 import { pusherServer } from '@/lib/pusher/server';
 import { eq } from 'drizzle-orm';
+import { orgPresenceChannel } from '@/lib/pusher/channels';
 
 export async function GET() {
   const user = await requireUser();
@@ -22,7 +23,7 @@ export async function PATCH(req: NextRequest) {
         set: { status: body.presence, updatedAt: new Date() },
       });
 
-    await pusherServer.trigger(`org-${user.orgId}-presence`, 'user.presence', {
+    await pusherServer.trigger(orgPresenceChannel(user.orgId), 'user.presence', {
       userId: user.id,
       status: body.presence,
     });

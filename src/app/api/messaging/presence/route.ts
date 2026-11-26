@@ -4,6 +4,7 @@ import { userPresence } from '@/lib/db/schema/messaging';
 import { getCurrentUser } from '@/lib/auth/session';
 import { pusherServer } from '@/lib/pusher/server';
 import { eq } from 'drizzle-orm';
+import { orgChannel } from '@/lib/pusher/channels';
 
 async function upsertPresence(userId: string, orgId: string, status: string, statusMessage: string | null) {
   const now = new Date();
@@ -16,7 +17,7 @@ async function upsertPresence(userId: string, orgId: string, status: string, sta
     });
 
   // Broadcast presence change to org
-  await pusherServer.trigger(`org-${orgId}`, 'user.presence', { userId, status, statusMessage });
+  await pusherServer.trigger(orgChannel(orgId), 'user.presence', { userId, status, statusMessage });
 }
 
 export async function POST(req: NextRequest) {

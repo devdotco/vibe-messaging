@@ -4,6 +4,7 @@ import { messages, channelMembers } from '@/lib/db/schema/messaging';
 import { requireUser } from '@/lib/auth/session';
 import { pusherServer } from '@/lib/pusher/server';
 import { eq, and, sql } from 'drizzle-orm';
+import { channelChannel } from '@/lib/pusher/channels';
 
 async function checkPinPermission(channelId: string, userId: string, userRole: string) {
   const isGlobalAdmin = userRole === 'PLATFORM_ADMIN' || userRole === 'ENTITY_ADMIN';
@@ -36,7 +37,7 @@ export async function POST(
   if (!updated) return NextResponse.json({ error: 'Message not found' }, { status: 404 });
 
   await pusherServer.trigger(
-    `org-${user.orgId}-channel-${channelId}`,
+    channelChannel(user.orgId, channelId),
     'message.pinned',
     { messageId },
   );
@@ -51,7 +52,7 @@ export async function POST(
   }).returning();
 
   await pusherServer.trigger(
-    `org-${user.orgId}-channel-${channelId}`,
+    channelChannel(user.orgId, channelId),
     'message.new',
     { message: sysMsg },
   );
@@ -78,7 +79,7 @@ export async function DELETE(
   if (!updated) return NextResponse.json({ error: 'Message not found' }, { status: 404 });
 
   await pusherServer.trigger(
-    `org-${user.orgId}-channel-${channelId}`,
+    channelChannel(user.orgId, channelId),
     'message.unpinned',
     { messageId },
   );

@@ -13,6 +13,7 @@ import { validate, z } from '@/lib/validate';
 import { eq, and, isNull, lt, desc, sql, inArray } from 'drizzle-orm';
 import { micromark } from 'micromark';
 import { linkifyMarkdown } from '@/lib/linkify';
+import { channelChannel, userChannel } from '@/lib/pusher/channels';
 
 const AttachmentSchema = z.object({
   url: z.string().min(1),
@@ -204,7 +205,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cha
       .where(eq(messages.id, body.parentMessageId))
       .returning({ threadReplyCount: messages.threadReplyCount });
 
-    pusherServer.trigger(`org-${user.orgId}-channel-${channelId}`, 'thread.reply', {
+    pusherServer.trigger(channelChannel(user.orgId, channelId), 'thread.reply', {
       parentId: body.parentMessageId,
       threadReplyCount: updatedParent?.threadReplyCount ?? 1,
       threadLastReplyAt: threadLastReplyAt.toISOString(),
@@ -229,7 +230,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cha
 
   // 9. Broadcast to channel
   const messageWithReactions: MessageWithReactions = { ...message, reactions: [], attachments: savedAttachments };
-  await pusherServer.trigger(`org-${user.orgId}-channel-${channelId}`, 'message.new', { message: messageWithReactions });
+  await pusherServer.trigger(channelChannel(user.orgId, channelId), 'message.new', { message: messageWithReactions });
 
   // 9. Create @mention notifications + email
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.erp.io/chat';
@@ -243,7 +244,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cha
       triggeredByUserId: user.id,
     });
     await pusherServer.trigger(
-      `org-${user.orgId}-user-${mentionedId}`,
+      userChannel(user.orgId, mentionedId),
       'notification.new',
       { type: 'mention', channelId, messageId: message.id },
     );
@@ -280,7 +281,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cha
         triggeredByUserId: user.id,
       }).onConflictDoNothing();
       pusherServer.trigger(
-        `org-${user.orgId}-user-${memberId}`,
+        userChannel(user.orgId, memberId),
         'notification.new',
         { type: 'here_mention', channelId, messageId: message.id },
       ).catch(() => {});
@@ -304,7 +305,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ cha
         triggeredByUserId: user.id,
       }).onConflictDoNothing();
       pusherServer.trigger(
-        `org-${user.orgId}-user-${memberId}`,
+        userChannel(user.orgId, memberId),
         'notification.new',
         { type: 'channel_mention', channelId, messageId: message.id },
       ).catch(() => {});

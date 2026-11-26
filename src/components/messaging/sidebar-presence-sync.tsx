@@ -1,6 +1,7 @@
 'use client';
 import { useEffect } from 'react';
 import { getPusherClient } from '@/lib/pusher/client';
+import { orgChannel } from '@/lib/pusher/channels';
 
 interface PresenceEvent {
   userId: string;
@@ -16,7 +17,7 @@ interface PresenceEvent {
 export function SidebarPresenceSync({ orgId }: { orgId: string }) {
   useEffect(() => {
     const pusher = getPusherClient();
-    const ch = pusher.subscribe(`org-${orgId}`);
+    const ch = pusher.subscribe(orgChannel(orgId));
 
     ch.bind('user.presence', (data: PresenceEvent) => {
       window.dispatchEvent(new CustomEvent('vibe:presence', { detail: data }));
@@ -24,7 +25,7 @@ export function SidebarPresenceSync({ orgId }: { orgId: string }) {
 
     return () => {
       ch.unbind_all();
-      pusher.unsubscribe(`org-${orgId}`);
+      pusher.unsubscribe(orgChannel(orgId));
     };
   }, [orgId]);
 

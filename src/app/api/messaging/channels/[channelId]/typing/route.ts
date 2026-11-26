@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { pusherServer } from '@/lib/pusher/server';
+import { channelChannel } from '@/lib/pusher/channels';
 
 export async function POST(
   req: NextRequest,
@@ -14,7 +15,7 @@ export async function POST(
   const { typing } = body as { typing: boolean };
 
   await pusherServer.trigger(
-    `org-${user.orgId}-channel-${channelId}`,
+    channelChannel(user.orgId, channelId),
     'typing.update',
     { userId: user.id, name: user.name, typing },
   );

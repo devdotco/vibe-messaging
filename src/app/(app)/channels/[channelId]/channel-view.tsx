@@ -12,6 +12,7 @@ import type { Channel, User } from '@/lib/db/schema/messaging';
 import type { MessageWithReactions } from '@/components/messaging/message-item';
 import type { AttachmentMeta } from '@/components/messaging/rich-composer';
 import { apiFetch } from '@/lib/base-path';
+import { channelChannel } from '@/lib/pusher/channels';
 
 type Tab = 'messages' | 'files' | 'pins';
 
@@ -48,7 +49,7 @@ export function ChannelView({ channel: initialChannel, initialMessages, usersMap
   // Pusher real-time subscription
   useEffect(() => {
     const pusher = getPusherClient();
-    const channelName = `org-${currentUser.orgId}-channel-${channel.id}`;
+    const channelName = channelChannel(currentUser.orgId, channel.id);
     const sub = pusher.subscribe(channelName);
 
     sub.bind('message.new', ({ message }: { message: MessageWithReactions }) => {
@@ -329,7 +330,7 @@ function ThreadPanel({ message, users, channelId, currentUser, onClose }: {
 
   useEffect(() => {
     const pusher = getPusherClient();
-    const ch = `org-${currentUser.orgId}-channel-${channelId}`;
+    const ch = channelChannel(currentUser.orgId, channelId);
     const sub = pusher.subscribe(ch);
     sub.bind('message.new', (data: { message: MessageWithReactions }) => {
       if (data.message.parentMessageId === message.id) {

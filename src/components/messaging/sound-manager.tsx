@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { getPusherClient } from '@/lib/pusher/client';
 import { playMessageSound, playMentionSound } from '@/lib/sounds';
 import type { MessageWithReactions } from './message-item';
+import { channelChannel } from '@/lib/pusher/channels';
 
 interface Props {
   channelId: string;
@@ -19,7 +20,7 @@ export function SoundManager({ channelId, currentUserId, orgId, currentUserName 
 
   useEffect(() => {
     const pusher = getPusherClient();
-    const channelName = `org-${orgId}-channel-${channelId}`;
+    const channelName = channelChannel(orgId, channelId);
     const sub = pusher.subscribe(channelName);
 
     sub.bind('message.new', ({ message }: { message: MessageWithReactions }) => {

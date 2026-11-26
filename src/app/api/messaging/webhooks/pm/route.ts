@@ -4,18 +4,24 @@ import { channelProjectLinks, messages, channels } from '@/lib/db/schema/messagi
 import { pusherServer } from '@/lib/pusher/server';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
+import { channelChannel } from '@/lib/pusher/channels';
 
 const WEBHOOK_SECRET = process.env.VIBE_WEBHOOK_SECRET ?? '';
 const BOT_USER_ID = process.env.CLAUDE_BOT_USER_ID ?? 'claude';
 const PM_URL = process.env.NEXT_PUBLIC_PM_URL ?? 'https://app.erp.io/pm';
 
+/*
+ * Fails CLOSED. This used to return true whenever VIBE_WEBHOOK_SECRET was
+ * unset ("dev mode"), and production ran without it — so anyone could post
+ * into project-linked channels as the Claude bot. pm-erp-io signs every
+ * request (hex HMAC-SHA256 in x-vibe-signature), so the secret must be set
+ * here to the same value. Length is checked first because timingSafeEqual
+ * throws on a length mismatch.
+ */
 function verifySignature(body: string, signature: string): boolean {
-  if (!WEBHOOK_SECRET) return true; // dev mode — skip verification
-  const expected = crypto
-    .createHmac('sha256', WEBHOOK_SECRET)
-    .update(body)
-    .digest('hex');
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  if (!WEBHOOK_SECRET || !/^[0-9a-f]{64}$/i.test(signature)) return false;
+  const expected = crypto.createHmac('sha256', WEBHOOK_SECRET).update(body).digest();
+  return crypto.timingSafeEqual(Buffer.from(signature, 'hex'), expected);
 }
 
 function buildMessageContent(event: string, payload: Record<string, unknown>): string {
@@ -107,7 +113,7 @@ export async function POST(req: NextRequest) {
 
     // Broadcast
     await pusherServer.trigger(
-      `org-${channel.orgId}-channel-${link.channelId}`,
+      channelChannel(channel.orgId, link.channelId),
       'message.new',
       { message: { ...message, reactions: [] } },
     );

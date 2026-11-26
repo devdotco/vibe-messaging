@@ -4,6 +4,7 @@ import { messages, channels, users, dmMessages, dmConversations } from '@/lib/db
 import { eq, and, or } from 'drizzle-orm';
 import { verifyReplyAddress, stripQuotedReply } from '@/lib/email/notifications';
 import { pusherServer } from '@/lib/pusher/server';
+import { channelChannel, dmChannel } from '@/lib/pusher/channels';
 
 export async function POST(req: NextRequest) {
   const form = await req.formData();
@@ -105,7 +106,7 @@ export async function POST(req: NextRequest) {
     console.log('[inbound] message inserted', { messageId: message?.id, channelId });
 
     await pusherServer.trigger(
-      `org-${channel.orgId}-channel-${channelId}`,
+      channelChannel(channel.orgId, channelId),
       'message.new',
       { message: { ...message, reactions: [] } },
     );
@@ -144,7 +145,7 @@ export async function POST(req: NextRequest) {
     }).returning();
 
     await pusherServer.trigger(
-      `org-${convo.orgId}-dm-${conversationId}`,
+      dmChannel(convo.orgId, conversationId),
       'dm.new',
       { message: dmMessage },
     );

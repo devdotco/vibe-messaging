@@ -8,6 +8,7 @@ import { playMessageSound } from '@/lib/sounds';
 import type { MessageWithReactions } from '@/components/messaging/message-item';
 import type { User } from '@/lib/db/schema/messaging';
 import { apiFetch } from '@/lib/base-path';
+import { dmChannel } from '@/lib/pusher/channels';
 
 export default function DmPage() {
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -45,7 +46,7 @@ export default function DmPage() {
   useEffect(() => {
     if (!orgId) return;
     const pusher = getPusherClient();
-    const ch = `org-${orgId}-dm-${conversationId}`;
+    const ch = dmChannel(orgId, conversationId);
     const sub = pusher.subscribe(ch);
     sub.bind('dm.new', ({ message }: { message: MessageWithReactions }) => {
       setMessages((prev) => [...prev, { ...message, reactions: message.reactions ?? [] }]);
