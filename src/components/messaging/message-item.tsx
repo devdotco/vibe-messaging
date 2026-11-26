@@ -9,6 +9,7 @@ import { linkifyHtml } from '@/lib/linkify';
 import type { Message, User } from '@/lib/db/schema/messaging';
 import type { ReactionGroup, AttachmentRow } from '@/app/api/messaging/channels/[channelId]/messages/route';
 import { apiFetch } from '@/lib/base-path';
+import { BRIGHAM_USER_ID } from '@/lib/brigham/thread';
 
 export interface MessageWithReactions extends Message {
   reactions?: ReactionGroup[];
@@ -60,6 +61,8 @@ export function MessageItem({ message, user, currentUserId, channelId, onReact, 
   const [pinning, setPinning] = useState(false);
 
   const isAI = message.isAiResponse;
+  // AI messages are Claude's (the @claude bot) unless they are Brigham's thread.
+  const isBrigham = isAI && message.userId === BRIGHAM_USER_ID;
   const isSystem = (message.metadata as Record<string, unknown> | null)?.type === 'system';
   const content = isStreaming ? (streamContent ?? '...') : message.content;
   const isPinned = message.isPinned ?? false;
@@ -128,7 +131,9 @@ export function MessageItem({ message, user, currentUserId, channelId, onReact, 
     >
       {/* Avatar */}
       <div className="mt-0.5 shrink-0">
-        {isAI ? (
+        {isBrigham ? (
+          <div className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: '#111827' }}>B</div>
+        ) : isAI ? (
           <ClaudeAvatar size={32} />
         ) : (
           <Avatar className="h-8 w-8">
@@ -145,7 +150,7 @@ export function MessageItem({ message, user, currentUserId, channelId, onReact, 
         {/* Header row */}
         <div className="flex items-baseline gap-2 mb-0.5">
           <span className="font-semibold text-sm text-[var(--text-primary)]">
-            {isAI ? 'Claude' : (user?.name ?? 'Unknown')}
+            {isBrigham ? 'Brigham' : isAI ? 'Claude' : (user?.name ?? 'Unknown')}
           </span>
           {isAI && <ClaudeAiBadge />}
           <span className="text-xs text-[var(--text-muted)]" title={message.createdAt?.toString()}>
