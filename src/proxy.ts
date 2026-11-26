@@ -8,7 +8,9 @@ import { stripBase, withBase } from '@/lib/base-path';
 // followed it, and the caller got a sign-in page with a 200 on it — which
 // surfaced as "no results". It authenticates with this app's own session and
 // returns an empty list when there is none, so it is fail-closed on its own.
-const PUBLIC = ['/sign-in', '/api/webhooks', '/api/webhooks/email/inbound', '/api/health', '/api/auth', '/api/messaging/webhooks', '/api/module-links'];
+// '/api/brigham' is Brigham → Chat, authenticated by a signed Brigham assertion
+// (lib/brigham/assertion.ts), never a session; it fails closed on its own.
+const PUBLIC = ['/sign-in', '/api/webhooks', '/api/webhooks/email/inbound', '/api/health', '/api/auth', '/api/messaging/webhooks', '/api/module-links', '/api/brigham'];
 
 export function proxy(req: NextRequest) {
   /*
