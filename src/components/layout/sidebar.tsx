@@ -288,6 +288,19 @@ export function Sidebar({ channels, dms, currentUser, workspaceName: initialWork
           <span className="text-[var(--sidebar-text-muted)] text-xs">Find a conversation…</span>
         </Link>
 
+        {/* Brigham: the person's private thread with the chief of staff */}
+        <Link
+          href="/brigham"
+          className="flex items-center gap-2 mx-2 px-3 py-1.5 rounded-lg text-sm transition-colors mb-1"
+          style={{
+            background: pathname === '/brigham' ? 'var(--sidebar-active)' : 'transparent',
+            color: 'var(--sidebar-text)',
+          }}
+        >
+          <Bot className="h-3.5 w-3.5 shrink-0 opacity-80" />
+          <span>Brigham</span>
+        </Link>
+
         {/* Channels section */}
         <SidebarSection
           label="Channels"

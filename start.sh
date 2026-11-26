@@ -39,6 +39,22 @@ psql "$DATABASE_URL" <<'UNIQ'
 CREATE UNIQUE INDEX IF NOT EXISTS channels_org_name_unique ON channels (org_id, name);
 UNIQ
 
+echo "[startup] Brigham thread table..."
+psql "$DATABASE_URL" <<'BRIGHAM_SQL'
+CREATE TABLE IF NOT EXISTS brigham_messages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id text NOT NULL,
+  user_id uuid NOT NULL,
+  role text NOT NULL,
+  content text NOT NULL,
+  brigham_conversation_id uuid,
+  status text,
+  url text,
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS brigham_messages_user_created_idx ON brigham_messages (user_id, created_at);
+BRIGHAM_SQL
+
 echo "[startup] Seeding Claude bot + RBAC policies..."
 psql "$DATABASE_URL" -v bot_id="$CLAUDE_BOT_USER_ID" <<'SQL'
 -- Claude bot user

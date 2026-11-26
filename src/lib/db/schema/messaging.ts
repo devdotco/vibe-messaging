@@ -130,6 +130,28 @@ export const dmMessages = pgTable('dm_messages', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
+// ── Brigham ───────────────────────────────────────────────────────────────────
+// Each person's PRIVATE thread with Brigham (app.erp.io/brigham). Not a DM:
+// Brigham answers with the asker's own access (their mail, CRM, grants), so
+// nothing here is ever visible to anyone but `userId`. Created in start.sh.
+
+export const brighamMessages = pgTable('brigham_messages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  orgId: text('org_id').notNull(),
+  userId: uuid('user_id').notNull(),
+  /** 'user' (the person), 'brigham' (an answer), 'update' (work Brigham reports on). */
+  role: text('role').notNull(),
+  content: text('content').notNull(),
+  /** Brigham's conversation, so follow-ups keep their context. */
+  brighamConversationId: uuid('brigham_conversation_id'),
+  /** For Brigham rows: done | working | failed. */
+  status: text('status'),
+  url: text('url'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('brigham_messages_user_created_idx').on(t.userId, t.createdAt),
+]);
+
 // ── Reactions ─────────────────────────────────────────────────────────────────
 
 export const messageReactions = pgTable('message_reactions', {
